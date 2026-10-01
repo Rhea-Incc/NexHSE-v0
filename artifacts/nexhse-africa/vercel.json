@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/((?!assets/|api/|robots.txt|sitemap.xml|llms.txt).*)", "destination": "/index.html" }
+    { "source": "/robots.txt", "has": [{ "type": "host", "value": "admin.nexhse.co.ke" }], "destination": "/admin-robots.txt" },
+    { "source": "/((?!assets/|api/|robots.txt|sitemap.xml|llms.txt|site.webmanifest|storage-bridge.html|favicon.svg|logo.png).*)", "destination": "/index.html" }
   ]
 }

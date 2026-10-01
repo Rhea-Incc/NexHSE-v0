@@ -1,0 +1,20 @@
+{
+  "id": "https://nexhse.co.ke/",
+  "name": "NexHSE Africa",
+  "short_name": "NexHSE",
+  "description": "Workplace safety, HSE training, fire equipment and environmental support.",
+  "lang": "en-KE",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#123f63",
+  "theme_color": "#123f63",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "370x370",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
