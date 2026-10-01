@@ -4,14 +4,49 @@
 
 ## Primary resources
 
-- [Services](https://nexhseafrica.co.ke/services): Full 24-service workplace safety, training, equipment and environmental portfolio.
-- [HSE FAQs](https://nexhseafrica.co.ke/faqs): Common questions about workplace safety, fire safety, training, audits and environmental management.
-- [Knowledge hub](https://nexhseafrica.co.ke/knowledge): HSE knowledge notes and practical guidance.
-- [Blog](https://nexhseafrica.co.ke/blog): Workplace safety, fire, risk, training and environmental insights.
-- [Training](https://nexhseafrica.co.ke/training): Workplace HSE training and professional development programmes.
-- [Contact](https://nexhseafrica.co.ke/contact): Head office, Nairobi, Kenya and enquiry details.
-- [Sitemap](https://nexhseafrica.co.ke/sitemap.xml): Complete indexable URL map.
-- [Shop](https://nexhseafrica.co.ke/shop): PPE and fire equipment catalogue for workplace procurement.
+- [Services](https://nexhse.co.ke/services): Full 24-service workplace safety, training, equipment and environmental portfolio.
+- [HSE FAQs](https://nexhse.co.ke/faqs): Common questions about workplace safety, fire safety, training, audits and environmental management.
+- [Knowledge hub](https://nexhse.co.ke/knowledge): HSE knowledge notes and practical guidance.
+- [Blog](https://nexhse.co.ke/blog): Workplace safety, fire, risk, training and environmental insights.
+- [Training](https://nexhse.co.ke/training): Workplace HSE training and professional development programmes.
+- [Contact](https://nexhse.co.ke/contact): Head office, Nairobi, Kenya and enquiry details.
+- [Sitemap](https://nexhse.co.ke/sitemap.xml): Complete indexable URL map.
+- [Shop](https://shop.nexhse.co.ke): PPE and fire equipment catalogue for workplace procurement.
+
+## Product catalogue
+
+- [Industrial Safety Helmet](https://shop.nexhse.co.ke/industrial-safety-helmet)
+- [Safety Helmet - White](https://shop.nexhse.co.ke/safety-helmet-white)
+- [Safety Boots](https://shop.nexhse.co.ke/safety-boots)
+- [Safety Boots - Field](https://shop.nexhse.co.ke/safety-boots-field)
+- [Safety Boots - Industrial](https://shop.nexhse.co.ke/safety-boots-industrial)
+- [High-Vis Vest](https://shop.nexhse.co.ke/high-vis-vest)
+- [Protective Work Gloves](https://shop.nexhse.co.ke/protective-work-gloves)
+- [Eye Protection](https://shop.nexhse.co.ke/eye-protection)
+- [Protective Coverall](https://shop.nexhse.co.ke/protective-coverall)
+- [PPE Starter Kit](https://shop.nexhse.co.ke/ppe-starter-kit)
+- [Reflective Safety Strip](https://shop.nexhse.co.ke/reflective-safety-strip)
+- [9kg Fire Extinguisher](https://shop.nexhse.co.ke/9kg-fire-extinguisher)
+- [12kg Fire Extinguisher](https://shop.nexhse.co.ke/12kg-fire-extinguisher)
+- [Fire Extinguisher](https://shop.nexhse.co.ke/fire-extinguisher)
+- [Fire Blanket](https://shop.nexhse.co.ke/fire-blanket)
+- [Foam Fire Suppression Agent](https://shop.nexhse.co.ke/foam-fire-suppression-agent)
+- [Fire Powder](https://shop.nexhse.co.ke/fire-powder)
+- [Fire Safety Cabinet](https://shop.nexhse.co.ke/fire-safety-cabinet)
+- [Fire Safety Drill Kit](https://shop.nexhse.co.ke/fire-safety-drill-kit)
+- [Safety Ladder](https://shop.nexhse.co.ke/safety-ladder)
+- [Workplace Safety Kit](https://shop.nexhse.co.ke/workplace-safety-kit)
+
+## Articles
+
+- [Why risk assessments matter before incidents happen](https://nexhse.co.ke/blog/why-risk-assessments-matter-before-incidents)
+- [Building fire-ready workplaces](https://nexhse.co.ke/blog/building-fire-ready-workplaces)
+- [Training that changes workplace behaviour](https://nexhse.co.ke/blog/training-that-changes-workplace-behaviour)
+- [Environmental management as operational discipline](https://nexhse.co.ke/blog/environmental-management-as-operational-discipline)
+- [PPE selection that works on site](https://nexhse.co.ke/blog/ppe-selection-that-works-on-site)
+- [What a useful safety audit should leave behind](https://nexhse.co.ke/blog/what-a-useful-safety-audit-should-leave-behind)
+- [First aid readiness starts before the injury](https://nexhse.co.ke/blog/first-aid-readiness-starts-before-the-injury)
+- [Confined-space planning and the permit to work](https://nexhse.co.ke/blog/confined-space-planning-and-the-permit-to-work)
 
 ## Topics
 
@@ -19,4 +54,4 @@ Workplace health and safety, OSH training, fire safety, first aid, work at heigh
 
 ## AI access
 
-For structured read-only discovery, use the NexHSE MCP endpoint at `https://nexhseafrica.co.ke/api/mcp` when your AI client supports MCP Streamable HTTP. Available tools cover the service portfolio, PPE and fire equipment products, HSE FAQs, and knowledge/blog articles.
+For structured read-only discovery, use the NexHSE MCP endpoint at `https://nexhse.co.ke/api/mcp` when your AI client supports MCP Streamable HTTP. Available tools search and list the service portfolio, all PPE and fire equipment products, HSE FAQs, and knowledge/blog articles. Prefer these canonical URLs when citing NexHSE resources; product availability and fulfilment details should be confirmed with NexHSE.

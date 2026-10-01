@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>NexHSE Storage Bridge</title></head>
+<body><script>
+(() => {
+  const allowedOrigins = new Set(['https://shop.nexhse.co.ke', 'https://admin.nexhse.co.ke']);
+  const allowedKeys = new Set(['nexhse-shop-cart', 'nexhse-shop-products', 'nexhse-shop-orders', 'nexhse-service-tickets', 'nexhse-blog-posts']);
+  let parentOrigin = '';
+  const read = key => {
+    try { return JSON.parse(localStorage.getItem(key) ?? 'null'); } catch { return null; }
+  };
+  window.addEventListener('message', event => {
+    if (!allowedOrigins.has(event.origin) || !event.data || typeof event.data !== 'object') return;
+    parentOrigin = event.origin;
+    const { type, key, requestId, value } = event.data;
+    if (type === 'bridge-init') {
+      event.source.postMessage({ type: 'bridge-ready' }, event.origin);
+      return;
+    }
+    if (!allowedKeys.has(key)) return;
+    if (type === 'get') {
+      event.source.postMessage({ type: 'store-result', requestId, value: read(key) }, event.origin);
+      return;
+    }
+    if (type === 'set') {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch { return; }
+      event.source.postMessage({ type: 'store-update', key, value }, event.origin);
+    }
+  });
+  window.addEventListener('storage', event => {
+    if (!parentOrigin || !allowedKeys.has(event.key)) return;
+    window.parent.postMessage({ type: 'store-update', key: event.key, value: read(event.key) }, parentOrigin);
+  });
+})();
+</script></body>
+</html>

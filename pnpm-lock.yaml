@@ -163,10 +163,16 @@ importers:
       '@replit/connectors-sdk':
         specifier: ^0.4.1
         version: 0.4.1
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:lib/db
       zod:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.5
       prettier:
         specifier: ^3.9.6
         version: 3.9.6

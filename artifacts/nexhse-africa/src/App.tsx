@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -23,8 +23,12 @@ const nexhseLogo = '/assets/logo01_1787991144513-BzpG7v81.png';
 
 const queryClient = new QueryClient();
 const phone = '0705 065 852';
-const siteUrl = 'https://nexhseafrica.co.ke';
-const email = 'info@nexhseafrica.co.ke';
+const siteUrl = 'https://nexhse.co.ke';
+const email = 'info@nexhse.co.ke';
+type SiteStoreKey = 'nexhse-shop-cart' | 'nexhse-shop-products' | 'nexhse-shop-orders' | 'nexhse-service-tickets' | 'nexhse-blog-posts';
+const siteStoreKeys: SiteStoreKey[] = ['nexhse-shop-cart', 'nexhse-shop-products', 'nexhse-shop-orders', 'nexhse-service-tickets', 'nexhse-blog-posts'];
+type SiteStoreContextValue = { read: <T>(key: SiteStoreKey, fallback: T) => Promise<T>; write: (key: SiteStoreKey, value: unknown) => void; appendOrder: (order: Omit<ShopOrder, 'id' | 'createdAt'>, fallback: ShopOrder) => Promise<ShopOrder> };
+const SiteStoreContext = createContext<SiteStoreContextValue | null>(null);
 const socialLinks = [
   { label: 'Find NexHSE Africa on Facebook', href: 'https://www.facebook.com/search/pages/?q=NexHSE%20Africa', icon: FaFacebookF, testId: 'link-footer-facebook' },
   { label: 'Find NexHSE Africa on TikTok', href: 'https://www.tiktok.com/search?q=NexHSE%20Africa', icon: FaTiktok, testId: 'link-footer-tiktok' },
@@ -38,6 +42,7 @@ type FAQ = { q: string; a: string };
 type ShopProduct = { name: string; category: string; price: number; image: string; description: string; longDescription: string; seoTitle: string; seoDescription: string; keywords: string[]; features: string[]; useCases: string[]; brand: string; condition: string; stock: number };
 type DeliveryDetails = { name: string; email: string; phone: string; address: string; county: string; notes: string };
 type ShopOrder = { id: string; createdAt: string; items: { name: string; quantity: number; price: number; image: string }[]; subtotal: number; deliveryFee: number; total: number; delivery: DeliveryDetails; paymentMethod: 'M-Pesa' | 'Card' | 'Bank transfer' | 'Pay on delivery'; paymentStatus: 'pending' | 'awaiting confirmation' | 'paid' | 'failed'; orderStatus: 'received' | 'processing' | 'ready for dispatch' | 'dispatched' | 'completed' };
+type ServiceTicket = { id: string; name: string; email: string; subject: string; priority: 'normal' | 'urgent'; details: string; status: 'open' | 'in progress' | 'resolved'; createdAt: string };
 
 const legacyServiceSlugs: Record<string, string> = {
   'safety-health-audits': 'health-safety-audits',
@@ -103,7 +108,8 @@ function Seo({ page = 'home', title, description, product }: { page?: string; ti
     const details = meta[page] ?? meta.home;
     const finalTitle = title ?? details.title;
     const finalDescription = description ?? details.description;
-    const canonicalUrl = `${siteUrl}${window.location.pathname}`;
+    const canonicalOrigin = window.location.hostname.toLowerCase() === 'shop.nexhse.co.ke' ? 'https://shop.nexhse.co.ke' : siteUrl;
+    const canonicalUrl = `${canonicalOrigin}${window.location.pathname}`;
     document.title = finalTitle;
     const set = (name: string, content: string) => {
       let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
@@ -115,7 +121,9 @@ function Seo({ page = 'home', title, description, product }: { page?: string; ti
       if (!el) { el = document.createElement('meta'); el.setAttribute('property', property); document.head.appendChild(el); }
       el.content = content;
     };
-    set('description', finalDescription); set('robots', 'index, follow'); set('twitter:card', 'summary_large_image'); set('twitter:title', finalTitle); set('twitter:description', finalDescription); set('twitter:image', `${siteUrl}/logo.png`);
+    const isPrivateOrTransactional = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke' || window.location.pathname.startsWith('/admin') || window.location.pathname === '/shop/checkout' || window.location.pathname === '/checkout';
+    const robotsPolicy = isPrivateOrTransactional ? 'noindex, nofollow' : 'index, follow';
+    set('description', finalDescription); set('robots', robotsPolicy); set('googlebot', robotsPolicy); set('bingbot', robotsPolicy); set('twitter:card', 'summary_large_image'); set('twitter:title', finalTitle); set('twitter:description', finalDescription); set('twitter:image', `${siteUrl}/logo.png`);
     setProperty('og:title', finalTitle); setProperty('og:description', finalDescription); setProperty('og:type', (page === 'knowledge' || page === 'blog') && title ? 'article' : 'website'); setProperty('og:url', canonicalUrl); setProperty('og:site_name', 'NexHSE Africa'); setProperty('og:locale', 'en_KE'); setProperty('og:image', `${siteUrl}/logo.png`);
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
@@ -146,7 +154,13 @@ function Logo({ light = false }: { light?: boolean }) {
 function Navbar() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
-  const links = [['About', '/about'], ['Services', '/services'], ['Training', '/training'], ['Shop', '/shop'], ['Knowledge', '/knowledge'], ['Blog', '/blog'], ['Contact', '/contact']];
+  const hostname = window.location.hostname.toLowerCase();
+  const quoteHref = hostname === 'shop.nexhse.co.ke' || hostname === 'admin.nexhse.co.ke' ? 'https://nexhse.co.ke/request-a-quote' : '/request-a-quote';
+  const links = hostname === 'shop.nexhse.co.ke'
+    ? [['Main site', 'https://nexhse.co.ke'], ['Shop', '/'], ['Admin', 'https://admin.nexhse.co.ke']]
+    : hostname === 'admin.nexhse.co.ke'
+      ? [['Public site', 'https://nexhse.co.ke'], ['Shop', 'https://shop.nexhse.co.ke'], ['Admin', '/']]
+      : [['About', '/about'], ['Services', '/services'], ['Training', '/training'], ['Shop', 'https://shop.nexhse.co.ke'], ['Admin', 'https://admin.nexhse.co.ke'], ['Knowledge', '/knowledge'], ['Blog', '/blog'], ['Contact', '/contact']];
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -164,11 +178,11 @@ function Navbar() {
     <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 lg:px-8">
       <Logo />
       <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary navigation">
-        {links.map(([label, href]) => { const isCurrent = location === href || location.startsWith(`${href}/`); return <Link key={href} href={href} className={`focus-ring text-[13px] font-semibold transition-colors hover:text-[hsl(var(--primary))] ${isCurrent ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`} aria-current={isCurrent ? 'page' : undefined} data-testid={`link-nav-${label.toLowerCase()}`}>{label}</Link>; })}
+        {links.map(([label, href]) => { const isCurrent = location === href || location.startsWith(`${href}/`); const className = `focus-ring text-[13px] font-semibold transition-colors hover:text-[hsl(var(--primary))] ${isCurrent ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`; return href.startsWith('https://') ? <a key={href} href={href} className={className} data-testid={`link-nav-${label.toLowerCase()}`}>{label}</a> : <Link key={href} href={href} className={className} aria-current={isCurrent ? 'page' : undefined} data-testid={`link-nav-${label.toLowerCase()}`}>{label}</Link>; })}
       </nav>
       <div className="hidden items-center gap-3 lg:flex">
         <a href="https://wa.me/254705065852" target="_blank" rel="noreferrer" className="focus-ring flex min-h-11 items-center gap-2 rounded-full border border-[hsl(var(--border))] px-4 text-[12px] font-bold text-[hsl(var(--primary))] transition-colors hover:border-[hsl(var(--accent))] hover:text-[hsl(var(--accent))]" data-testid="link-whatsapp"><span className="h-2 w-2 rounded-full bg-[hsl(var(--accent))]" /> WhatsApp</a>
-        <Link href="/request-a-quote" className="focus-ring flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-[12px] font-bold tracking-wide text-white transition-transform hover:-translate-y-0.5" data-testid="link-header-quote">Request a quote <ArrowUpRight size={15} /></Link>
+        {quoteHref.startsWith('https://') ? <a href={quoteHref} className="focus-ring flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-[12px] font-bold tracking-wide text-white transition-transform hover:-translate-y-0.5" data-testid="link-header-quote">Request a quote <ArrowUpRight size={15} /></a> : <Link href={quoteHref} className="focus-ring flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-[12px] font-bold tracking-wide text-white transition-transform hover:-translate-y-0.5" data-testid="link-header-quote">Request a quote <ArrowUpRight size={15} /></Link>}
       </div>
        <button onClick={() => setOpen(!open)} className="mobile-menu-toggle focus-ring relative grid h-11 w-11 place-items-center rounded-full border border-[hsl(var(--border))] transition-[transform,background-color,border-color] duration-700 ease-[cubic-bezier(.16,1,.3,1)] hover:border-[hsl(var(--accent)/.55)] hover:bg-[hsl(var(--secondary)/.55)] lg:hidden" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} data-testid="button-mobile-menu">
          <span className={`hamburger-aura ${open ? 'is-open' : ''}`} aria-hidden="true"><span /><span /></span>
@@ -179,8 +193,8 @@ function Navbar() {
       <MobileNavSlideshow />
        <div className="mobile-nav-organic-lines" aria-hidden="true"><span /><span /><span /></div>
       <div className="mobile-nav-content relative z-10 px-5 py-4">
-        {links.map(([label, href]) => { const isCurrent = location === href || location.startsWith(`${href}/`); return <Link onClick={() => setOpen(false)} key={href} href={href} className={`mobile-nav-link focus-ring flex min-h-12 items-center justify-between border-b border-[hsl(var(--border)/.65)] text-sm font-semibold ${isCurrent ? 'is-current' : ''}`} aria-current={isCurrent ? 'page' : undefined} data-testid={`link-mobile-${label.toLowerCase()}`}><span>{label}</span><ChevronRight size={16} className="text-[hsl(var(--accent))]" /></Link>; })}
-        <Link onClick={() => setOpen(false)} href="/request-a-quote" className="mobile-nav-quote focus-ring mt-4 flex min-h-12 items-center justify-center rounded-full bg-[hsl(var(--primary))] font-bold text-white" data-testid="link-mobile-quote">Request a quote <ArrowUpRight size={16} className="ml-2" /></Link>
+        {links.map(([label, href]) => { const isCurrent = location === href || location.startsWith(`${href}/`); const className = `mobile-nav-link focus-ring flex min-h-12 items-center justify-between border-b border-[hsl(var(--border)/.65)] text-sm font-semibold ${isCurrent ? 'is-current' : ''}`; return href.startsWith('https://') ? <a onClick={() => setOpen(false)} key={href} href={href} className={className} data-testid={`link-mobile-${label.toLowerCase()}`}><span>{label}</span><ChevronRight size={16} className="text-[hsl(var(--accent))]" /></a> : <Link onClick={() => setOpen(false)} key={href} href={href} className={className} aria-current={isCurrent ? 'page' : undefined} data-testid={`link-mobile-${label.toLowerCase()}`}><span>{label}</span><ChevronRight size={16} className="text-[hsl(var(--accent))]" /></Link>; })}
+        {quoteHref.startsWith('https://') ? <a onClick={() => setOpen(false)} href={quoteHref} className="mobile-nav-quote focus-ring mt-4 flex min-h-12 items-center justify-center rounded-full bg-[hsl(var(--primary))] font-bold text-white" data-testid="link-mobile-quote">Request a quote <ArrowUpRight size={16} className="ml-2" /></a> : <Link onClick={() => setOpen(false)} href={quoteHref} className="mobile-nav-quote focus-ring mt-4 flex min-h-12 items-center justify-center rounded-full bg-[hsl(var(--primary))] font-bold text-white" data-testid="link-mobile-quote">Request a quote <ArrowUpRight size={16} className="ml-2" /></Link>}
       </div>
     </nav>
   </header>;
@@ -188,6 +202,8 @@ function Navbar() {
 
 function MobileActions() {
   const [visible, setVisible] = useState(true);
+  const hostname = window.location.hostname.toLowerCase();
+  const quoteHref = hostname === 'shop.nexhse.co.ke' || hostname === 'admin.nexhse.co.ke' ? 'https://nexhse.co.ke/request-a-quote' : '/request-a-quote';
 
   useEffect(() => {
     let settleTimer: number | undefined;
@@ -204,10 +220,11 @@ function MobileActions() {
     };
   }, []);
 
+  if (hostname === 'admin.nexhse.co.ke') return null;
   return <div className={`fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/.94)] p-1 shadow-[0_12px_40px_rgba(15,52,68,.18)] backdrop-blur transition-all duration-200 md:hidden ${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-[calc(100%+1rem)] opacity-0'}`} aria-hidden={!visible}>
     <a href="https://wa.me/254705065852" target="_blank" rel="noreferrer" className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-bold text-[hsl(var(--accent))]" data-testid="link-sticky-whatsapp"><span className="text-xs">WhatsApp</span></a>
     <a href={`tel:${phone.replaceAll(' ', '')}`} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-bold text-[hsl(var(--primary))]" data-testid="link-sticky-call"><Phone size={15} /><span>Call</span></a>
-    <Link href="/request-a-quote" className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></Link>
+    {quoteHref.startsWith('https://') ? <a href={quoteHref} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></a> : <Link href={quoteHref} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></Link>}
   </div>;
 }
 
@@ -265,7 +282,13 @@ function MobileNavSlideshow() {
 }
 
 function FooterList({ title, links }: { title: string; links: string[][] }) {
-  return <div><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">{title}</p><div className="mt-5 space-y-3">{links.map(([label, href]) => <Link href={href} key={href} className="focus-ring block w-fit text-sm text-white/70 transition-colors hover:text-white" data-testid={`link-footer-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>)}</div></div>;
+  const hostname = window.location.hostname.toLowerCase();
+  const resolveHref = (href: string) => {
+    if (hostname === 'shop.nexhse.co.ke') return href === '/shop' ? '/' : `${siteUrl}${href}`;
+    if (hostname === 'admin.nexhse.co.ke') return href === '/shop' ? 'https://shop.nexhse.co.ke' : `${siteUrl}${href}`;
+    return href === '/shop' ? 'https://shop.nexhse.co.ke' : href;
+  };
+  return <div><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">{title}</p><div className="mt-5 space-y-3">{links.map(([label, href]) => { const target = resolveHref(href); const className = 'focus-ring block w-fit text-sm text-white/70 transition-colors hover:text-white'; return target.startsWith('https://') ? <a href={target} key={href} className={className} data-testid={`link-footer-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</a> : <Link href={target} key={href} className={className} data-testid={`link-footer-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>; })}</div></div>;
 }
 
 function AdminOrderPanel() {
@@ -273,9 +296,140 @@ function AdminOrderPanel() {
   return <section className="mx-auto w-full max-w-7xl border-t border-[hsl(var(--border))] px-5 py-12 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Live order queue</p><h2 className="display mt-2 text-3xl text-[hsl(var(--primary))]">Orders and payment rails</h2></div><span className="text-xs text-[hsl(var(--muted-foreground))]">{orders.length} order{orders.length === 1 ? '' : 's'}</span></div>{orders.length ? <div className="mt-6 space-y-3">{orders.map(order => <div key={order.id} className="grid gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 lg:grid-cols-[1.2fr_.7fr_.8fr_.8fr]"><div><p className="font-bold text-[hsl(var(--primary))]">{order.id}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{order.delivery.name} · {order.delivery.county}</p><p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}</p></div><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">Payment</p><p className="mt-2 text-xs font-bold text-[hsl(var(--primary))]">{order.paymentMethod}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{order.paymentStatus}</p></div><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">Total</p><p className="mt-2 font-bold text-[hsl(var(--primary))]">KSh {order.total.toLocaleString()}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{new Date(order.createdAt).toLocaleString()}</p></div><label className="text-xs font-bold text-[hsl(var(--primary))]">Order status<select value={order.orderStatus} onChange={event => updateOrder(order.id, { orderStatus: event.target.value as ShopOrder['orderStatus'] })} className="focus-ring mt-2 min-h-10 w-full rounded-xl border border-[hsl(var(--border))] bg-white px-2 text-xs outline-none" data-testid={`select-admin-order-status-${order.id}`}><option>received</option><option>processing</option><option>ready for dispatch</option><option>dispatched</option><option>completed</option></select></label></div>)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-[hsl(var(--border))] p-8 text-sm text-[hsl(var(--muted-foreground))]">No orders have been placed yet. New checkout submissions will appear here automatically.</p>}</section>;
 }
 
+function SiteStoreProvider({ children }: { children: ReactNode }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const pendingRef = useRef(new Map<string, (value: unknown) => void>());
+  const queueRef = useRef<{ type: 'get' | 'set'; key: SiteStoreKey; value?: unknown; requestId?: string }[]>([]);
+  const requestCountRef = useRef(0);
+  const isRemoteHost = ['shop.nexhse.co.ke', 'admin.nexhse.co.ke'].includes(window.location.hostname.toLowerCase());
+  const [bridgeReady, setBridgeReady] = useState(!isRemoteHost);
+
+  useEffect(() => {
+    if (!isRemoteHost) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== siteUrl || !event.data) return;
+      if (event.data.type === 'bridge-ready') {
+        setBridgeReady(true);
+        for (const message of queueRef.current.splice(0)) frameRef.current?.contentWindow?.postMessage(message, siteUrl);
+      } else if (event.data.type === 'store-result') {
+        const resolve = pendingRef.current.get(event.data.requestId);
+        if (resolve) {
+          pendingRef.current.delete(event.data.requestId);
+          resolve(event.data.value);
+        }
+      } else if (event.data.type === 'store-update' && event.data.key) {
+        window.dispatchEvent(new CustomEvent('nexhse-store-sync', { detail: { key: event.data.key, value: event.data.value } }));
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [isRemoteHost]);
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || !siteStoreKeys.includes(event.key as SiteStoreKey)) return;
+      let value: unknown = null;
+      try { value = event.newValue === null ? null : JSON.parse(event.newValue); } catch { return; }
+      window.dispatchEvent(new CustomEvent('nexhse-store-sync', { detail: { key: event.key, value } }));
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const request = (message: { type: 'get' | 'set'; key: SiteStoreKey; value?: unknown; requestId?: string }) => {
+    if (bridgeReady) frameRef.current?.contentWindow?.postMessage(message, siteUrl);
+    else queueRef.current.push(message);
+  };
+
+  const value: SiteStoreContextValue = {
+    read: <T,>(key: SiteStoreKey, fallback: T) => {
+      const readLocal = () => {
+        try { return JSON.parse(window.localStorage.getItem(key) ?? 'null') ?? fallback as T; } catch { return fallback; }
+      };
+      if (key === 'nexhse-shop-cart') {
+        if (!isRemoteHost) return Promise.resolve(readLocal());
+        const requestId = `get-${++requestCountRef.current}`;
+        return new Promise<T>(resolve => {
+          pendingRef.current.set(requestId, result => resolve((result ?? readLocal()) as T));
+          request({ type: 'get', key, requestId });
+        });
+      }
+      const remoteRead = fetch(`/api/site-store?key=${encodeURIComponent(key)}`, { credentials: 'same-origin', cache: 'no-store' }).then(async response => {
+        if (!response.ok) throw new Error('Shared store not available');
+        return (await response.json()).value as T | null;
+      });
+      if (!isRemoteHost) return remoteRead.catch(readLocal).then(result => result ?? fallback);
+      const readBridge = () => new Promise<T | null>(resolve => {
+        const requestId = `get-${++requestCountRef.current}`;
+        pendingRef.current.set(requestId, result => resolve((result ?? null) as T | null));
+        request({ type: 'get', key, requestId });
+      });
+      return remoteRead.then(async result => result ?? await readBridge()).catch(readBridge).then(result => result ?? readLocal());
+    },
+    write: (key, data) => {
+      try { window.localStorage.setItem(key, JSON.stringify(data)); } catch { return; }
+      if (isRemoteHost) request({ type: 'set', key, value: data });
+      if (key !== 'nexhse-shop-cart') void fetch('/api/site-store', { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, value: data }) }).catch(() => undefined);
+    },
+    appendOrder: async (order, fallback) => {
+      try {
+        const response = await fetch('/api/site-store', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: 'nexhse-shop-orders', order }) });
+        if (!response.ok) throw new Error('Shared order store is unavailable');
+        return (await response.json()).order as ShopOrder;
+      } catch { return fallback; }
+    },
+  };
+
+  return <SiteStoreContext.Provider value={value}>{children}{isRemoteHost && <iframe ref={frameRef} src={`${siteUrl}/storage-bridge.html`} onLoad={() => frameRef.current?.contentWindow?.postMessage({ type: 'bridge-init' }, siteUrl)} title="NexHSE shared storage bridge" tabIndex={-1} aria-hidden="true" className="site-storage-bridge" />}</SiteStoreContext.Provider>;
+}
+
+function useSiteStore<T>(key: SiteStoreKey, fallback: T): [T, (value: T | ((current: T) => T)) => void] {
+  const context = useContext(SiteStoreContext);
+  if (!context) throw new Error('SiteStoreProvider is missing');
+  const [value, setValue] = useState(fallback);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void context.read(key, fallback).then(result => {
+      if (active) { setValue(result); setLoaded(true); }
+    });
+    const onSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ key: SiteStoreKey; value: T }>).detail;
+      if (detail.key === key) setValue(detail.value);
+    };
+    window.addEventListener('nexhse-store-sync', onSync);
+    return () => { active = false; window.removeEventListener('nexhse-store-sync', onSync); };
+  }, [context, key]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      void context.read(key, fallback).then(remote => setValue(current => JSON.stringify(current) === JSON.stringify(remote) ? current : remote));
+    };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [context, key]);
+
+  useEffect(() => { if (loaded) context.write(key, value); }, [context, key, loaded, value]);
+  return [value, setValue];
+}
+
 function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  return <div className="grain min-h-[100dvh]"><CursorAtmosphere /><Navbar /><PageCanvasArtwork />{children}{location === '/admin' && <AdminOrderPanel />}<CartDock /><Footer /><MobileActions /></div>;
+  const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
+  const showAdminNav = isAdminHost || location.startsWith('/admin');
+  const showOrderPanel = location === '/admin' || (isAdminHost && location === '/');
+  return <div className="grain min-h-[100dvh]"><CursorAtmosphere /><Navbar />{showAdminNav && <AdminWorkspaceNavigation />}<PageCanvasArtwork />{children}{showOrderPanel && <AdminOrderPanel />}<CartDock /><Footer /><MobileActions /></div>;
+}
+
+function AdminWorkspaceNavigation() {
+  const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
+  const base = isAdminHost ? '' : '/admin';
+  const links = [['Overview', base || '/'], ['Orders', `${base}/orders`], ['Customers', `${base}/customers`], ['Service desk', `${base}/service`], ['Products', `${base}/products`], ['Blog', `${base}/blog`]];
+  const signOut = async () => { await fetch('/api/admin-session', { method: 'DELETE', credentials: 'same-origin' }); window.location.reload(); };
+  return <nav className="admin-workspace-nav" aria-label="Admin workspace">{links.map(([label, href]) => <Link key={label} href={href} className="focus-ring" data-testid={`link-admin-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>)}<button type="button" onClick={() => void signOut()} className="focus-ring ml-auto" data-testid="button-admin-sign-out">Sign out</button></nav>;
 }
 
 function CartDock() {
@@ -284,7 +438,7 @@ function CartDock() {
   const count = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
   if (!count) return null;
   const total = products.reduce((sum, product) => sum + product.price * (cart[product.name] ?? 0), 0);
-  return <Link href="/shop/checkout" className="cart-dock focus-ring" data-testid="link-cart-dock"><span><span className="mono-label text-[9px] text-[hsl(var(--secondary))]">Your cart</span><strong>{count} item{count === 1 ? '' : 's'}</strong></span><span>KSh {total.toLocaleString()} <ArrowUpRight size={15} /></span></Link>;
+  return <Link href={checkoutHref()} className="cart-dock focus-ring" data-testid="link-cart-dock"><span><span className="mono-label text-[9px] text-[hsl(var(--secondary))]">Your cart</span><strong>{count} item{count === 1 ? '' : 's'}</strong></span><span>KSh {total.toLocaleString()} <ArrowUpRight size={15} /></span></Link>;
 }
 
 function CursorAtmosphere() {
@@ -609,19 +763,10 @@ const blogPosts = [
 type BlogPost = (typeof blogPosts)[number];
 
 function useBlogPosts() {
-  const [posts, setPosts] = useState<BlogPost[]>(() => {
-    if (typeof window === 'undefined') return blogPosts;
-    try {
-      const saved = JSON.parse(window.localStorage.getItem('nexhse-blog-posts') ?? 'null');
-      return Array.isArray(saved) && saved.length ? saved : blogPosts;
-    } catch { return blogPosts; }
-  });
+  const [storedPosts, setStoredPosts] = useSiteStore<BlogPost[]>('nexhse-blog-posts', blogPosts);
+  const posts = storedPosts.length ? storedPosts : blogPosts;
 
-  useEffect(() => {
-    window.localStorage.setItem('nexhse-blog-posts', JSON.stringify(posts));
-  }, [posts]);
-
-  const addPost = (post: BlogPost) => setPosts(current => [post, ...current]);
+  const addPost = (post: BlogPost) => setStoredPosts(current => [post, ...current]);
   return { posts, addPost };
 }
 
@@ -723,15 +868,30 @@ function productSlug(product: (typeof shopProducts)[number]) {
   return product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function useShopCart() {
-  const [cart, setCart] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return {};
-    try { return JSON.parse(window.localStorage.getItem('nexhse-shop-cart') ?? '{}'); } catch { return {}; }
-  });
+function shopHomeHref() {
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname === 'shop.nexhse.co.ke') return '/';
+  if (hostname === 'admin.nexhse.co.ke') return 'https://shop.nexhse.co.ke';
+  return '/shop';
+}
 
-  useEffect(() => {
-    window.localStorage.setItem('nexhse-shop-cart', JSON.stringify(cart));
-  }, [cart]);
+function productDetailHref(product: ShopProduct) {
+  const hostname = window.location.hostname.toLowerCase();
+  const slug = productSlug(product);
+  if (hostname === 'shop.nexhse.co.ke') return `/${slug}`;
+  if (hostname === 'admin.nexhse.co.ke') return `https://shop.nexhse.co.ke/${slug}`;
+  return `/shop/${slug}`;
+}
+
+function checkoutHref() {
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname === 'shop.nexhse.co.ke') return '/checkout';
+  if (hostname === 'admin.nexhse.co.ke') return 'https://shop.nexhse.co.ke/checkout';
+  return '/shop/checkout';
+}
+
+function useShopCart() {
+  const [cart, setCart] = useSiteStore<Record<string, number>>('nexhse-shop-cart', {});
 
   const addToCart = (productName: string, quantity = 1) => setCart(prev => ({ ...prev, [productName]: (prev[productName] ?? 0) + quantity }));
   const removeFromCart = (productName: string) => setCart(prev => {
@@ -744,46 +904,38 @@ function useShopCart() {
 }
 
 function useShopOrders() {
-  const [orders, setOrders] = useState<ShopOrder[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try { return JSON.parse(window.localStorage.getItem('nexhse-shop-orders') ?? '[]'); } catch { return []; }
-  });
+  const [orders, setOrders] = useSiteStore<ShopOrder[]>('nexhse-shop-orders', []);
+  const store = useContext(SiteStoreContext);
 
-  useEffect(() => {
-    window.localStorage.setItem('nexhse-shop-orders', JSON.stringify(orders));
-  }, [orders]);
-
-  const createOrder = (order: Omit<ShopOrder, 'id' | 'createdAt'>) => {
+  const createOrder = async (order: Omit<ShopOrder, 'id' | 'createdAt'>) => {
     const created: ShopOrder = { ...order, id: `NX-${Date.now().toString(36).toUpperCase()}`, createdAt: new Date().toISOString() };
-    setOrders(current => [created, ...current]);
-    return created;
+    const stored = store ? await store.appendOrder(order, created) : created;
+    setOrders(current => [stored, ...current.filter(item => item.id !== stored.id)]);
+    return stored;
   };
   const updateOrder = (id: string, changes: Partial<ShopOrder>) => setOrders(current => current.map(order => order.id === id ? { ...order, ...changes } : order));
   return { orders, createOrder, updateOrder };
 }
 
+function useServiceTickets() {
+  const [tickets, setTickets] = useSiteStore<ServiceTicket[]>('nexhse-service-tickets', []);
+  const updateTicket = (id: string, status: ServiceTicket['status']) => setTickets(current => current.map(ticket => ticket.id === id ? { ...ticket, status } : ticket));
+  const addTicket = (ticket: Omit<ServiceTicket, 'id' | 'createdAt' | 'status'>) => setTickets(current => [{ ...ticket, id: `CS-${Date.now().toString(36).toUpperCase()}`, createdAt: new Date().toISOString(), status: 'open' }, ...current]);
+  return { tickets, updateTicket, addTicket };
+}
+
 function useShopProducts() {
-  const [products, setProducts] = useState<ShopProduct[]>(() => {
-    if (typeof window === 'undefined') return shopProducts;
-    try {
-      const saved = JSON.parse(window.localStorage.getItem('nexhse-shop-products') ?? 'null') as Partial<ShopProduct>[] | null;
-      if (!Array.isArray(saved) || !saved.length) return shopProducts;
-      return shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(saved.find(product => product.name === defaultProduct.name) ?? {}) }));
-    } catch { return shopProducts; }
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem('nexhse-shop-products', JSON.stringify(products));
-  }, [products]);
-
-  const updateProduct = (name: string, changes: Partial<ShopProduct>) => setProducts(current => current.map(product => product.name === name ? { ...product, ...changes } : product));
+  const [storedProducts, setStoredProducts] = useSiteStore<Partial<ShopProduct>[]>('nexhse-shop-products', shopProducts);
+  const products = useMemo(() => shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(storedProducts.find(product => product.name === defaultProduct.name) ?? {}) })), [storedProducts]);
+  const updateProduct = (name: string, changes: Partial<ShopProduct>) => setStoredProducts(current => shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(current.find(product => product.name === defaultProduct.name) ?? {}), ...(defaultProduct.name === name ? changes : {}) })));
   return { products, updateProduct };
 }
 
 function useProductSeo(product?: ShopProduct) {
   useEffect(() => {
     if (!product) return;
-    const canonicalUrl = `${siteUrl}/shop/${productSlug(product)}`;
+    const productOrigin = window.location.hostname.toLowerCase() === 'shop.nexhse.co.ke' ? 'https://shop.nexhse.co.ke' : siteUrl;
+    const canonicalUrl = `${productOrigin}${window.location.hostname.toLowerCase() === 'shop.nexhse.co.ke' ? `/${productSlug(product)}` : `/shop/${productSlug(product)}`}`;
     document.title = product.seoTitle;
     const setMeta = (name: string, content: string) => {
       let element = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
@@ -815,7 +967,7 @@ function Shop() {
   const cartCount = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
   const cartTotal = products.reduce((sum, product) => sum + product.price * (cart[product.name] ?? 0), 0);
 
-  return <Shell><Seo page="home" title="Shop | NexHSE Africa" description="Purchase workplace PPE and fire equipment for safer, better-prepared operations." /><main><ShopHero /><section id="shop-catalogue" className="mx-auto max-w-7xl scroll-mt-8 px-5 py-20 lg:px-8"><Breadcrumbs items={[['Shop', '/shop']]} /><div className="mb-8 flex flex-col gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Your basket</p><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{cartCount ? `${cartCount} item${cartCount === 1 ? '' : 's'} selected` : 'No products selected yet.'}</p></div><div className="flex items-center gap-3"><span className="text-lg font-bold text-[hsl(var(--primary))]">KSh {cartTotal.toLocaleString()}</span>{cartCount > 0 && <button type="button" onClick={clearCart} className="focus-ring min-h-10 rounded-full border border-[hsl(var(--border))] px-4 text-xs font-bold text-[hsl(var(--primary))]" data-testid="button-shop-clear-cart">Clear cart</button>}</div></div><div className="mb-10 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-shop-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{visibleProducts.map(product => <div key={product.name} role="link" tabIndex={0} onClick={() => navigate(`/shop/${productSlug(product)}`)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') navigate(`/shop/${productSlug(product)}`); }} className="cursor-pointer overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform hover:-translate-y-1" data-testid={`card-shop-${product.name.toLowerCase().replaceAll(' ', '-')}`}><img src={product.image} alt={product.name} className="h-52 w-full object-cover" /><div className="p-5"><div className="flex items-center justify-between"><span className="mono-label text-[9px] text-[hsl(var(--accent))]">{product.category}</span><span className="text-sm font-bold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</span></div><h3 className="mt-4 text-xl font-bold text-[hsl(var(--primary))]">{product.name}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{product.description}</p><p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">{product.stock} available · View product</p><div className="mt-5 flex items-center gap-2">{cart[product.name] ? <><button type="button" onClick={event => { event.stopPropagation(); removeFromCart(product.name); }} className="focus-ring grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] text-sm font-bold text-[hsl(var(--primary))]" aria-label={`Remove one ${product.name}`} data-testid={`button-shop-remove-${product.name.toLowerCase().replaceAll(' ', '-')}`}>-</button><span className="min-w-6 text-center text-sm font-bold text-[hsl(var(--primary))]">{cart[product.name]}</span></> : null}<button type="button" onClick={event => { event.stopPropagation(); addToCart(product.name); }} className="focus-ring inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 text-xs font-bold text-white" data-testid={`button-shop-buy-${product.name.toLowerCase().replaceAll(' ', '-')}`}>{cart[product.name] ? 'Add another' : 'Add to cart'} <ArrowUpRight size={14} /></button></div></div></div>)}</div></section><section className="bg-[hsl(var(--secondary)/.5)] px-5 py-20 lg:px-8"><div className="mx-auto max-w-7xl rounded-2xl bg-[hsl(var(--primary))] p-8 text-white"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Storefront groundwork</p><h2 className="display mt-4 text-4xl leading-tight">Built for future stock, orders and customer operations.</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/70">This is the initial storefront layer for PPE and fire equipment procurement, ready to connect to a proper admin workflow for customer data, stock visibility and order operations.</p><Link href="/request-a-quote" className="focus-ring mt-8 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 py-3 text-sm font-bold" data-testid="link-shop-quote">Request a wholesale quote <ArrowUpRight size={16} /></Link></div></section><QuoteCTA /></main></Shell>;
+  return <Shell><Seo page="home" title="Shop | NexHSE Africa" description="Purchase workplace PPE and fire equipment for safer, better-prepared operations." /><main><ShopHero /><section id="shop-catalogue" className="mx-auto max-w-7xl scroll-mt-8 px-5 py-20 lg:px-8"><Breadcrumbs items={[['Shop', '/shop']]} /><div className="mb-8 flex flex-col gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Your basket</p><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{cartCount ? `${cartCount} item${cartCount === 1 ? '' : 's'} selected` : 'No products selected yet.'}</p></div><div className="flex items-center gap-3"><span className="text-lg font-bold text-[hsl(var(--primary))]">KSh {cartTotal.toLocaleString()}</span>{cartCount > 0 && <button type="button" onClick={clearCart} className="focus-ring min-h-10 rounded-full border border-[hsl(var(--border))] px-4 text-xs font-bold text-[hsl(var(--primary))]" data-testid="button-shop-clear-cart">Clear cart</button>}</div></div><div className="mb-10 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-shop-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">{visibleProducts.map(product => <div key={product.name} role="link" tabIndex={0} onClick={() => navigate(productDetailHref(product))} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') navigate(productDetailHref(product)); }} className="cursor-pointer overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-transform hover:-translate-y-1" data-testid={`card-shop-${product.name.toLowerCase().replaceAll(' ', '-')}`}><div className="shop-product-image-frame flex h-52 items-center justify-center bg-[hsl(var(--secondary)/.28)]"><img src={product.image} alt={product.name} className="h-full w-full object-contain p-3" /></div><div className="p-5"><div className="flex items-center justify-between"><span className="mono-label text-[9px] text-[hsl(var(--accent))]">{product.category}</span><span className="text-sm font-bold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</span></div><h3 className="mt-4 text-xl font-bold text-[hsl(var(--primary))]">{product.name}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{product.description}</p><p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">{product.stock} available · View product</p><div className="mt-5 flex items-center gap-2">{cart[product.name] ? <><button type="button" onClick={event => { event.stopPropagation(); removeFromCart(product.name); }} className="focus-ring grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] text-sm font-bold text-[hsl(var(--primary))]" aria-label={`Remove one ${product.name}`} data-testid={`button-shop-remove-${product.name.toLowerCase().replaceAll(' ', '-')}`}>-</button><span className="min-w-6 text-center text-sm font-bold text-[hsl(var(--primary))]">{cart[product.name]}</span></> : null}<button type="button" onClick={event => { event.stopPropagation(); addToCart(product.name); }} className="focus-ring inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 text-xs font-bold text-white" data-testid={`button-shop-buy-${product.name.toLowerCase().replaceAll(' ', '-')}`}>{cart[product.name] ? 'Add another' : 'Add to cart'} <ArrowUpRight size={14} /></button></div></div></div>)}</div></section><section className="bg-[hsl(var(--secondary)/.5)] px-5 py-20 lg:px-8"><div className="mx-auto max-w-7xl rounded-2xl bg-[hsl(var(--primary))] p-8 text-white"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Storefront groundwork</p><h2 className="display mt-4 text-4xl leading-tight">Built for future stock, orders and customer operations.</h2><p className="mt-4 max-w-2xl text-sm leading-7 text-white/70">This is the initial storefront layer for PPE and fire equipment procurement, ready to connect to a proper admin workflow for customer data, stock visibility and order operations.</p><Link href="/request-a-quote" className="focus-ring mt-8 inline-flex items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 py-3 text-sm font-bold" data-testid="link-shop-quote">Request a wholesale quote <ArrowUpRight size={16} /></Link></div></section><QuoteCTA /></main></Shell>;
 }
 
 function ShopCheckout() {
@@ -832,14 +984,14 @@ function ShopCheckout() {
   const total = subtotal + deliveryFee;
   const update = (field: keyof DeliveryDetails, value: string) => setForm(current => ({ ...current, [field]: value }));
   const canContinue = step === 1 ? !!form.name && !!form.email && !!form.phone && !!form.address && !!form.county : true;
-  const submitOrder = () => {
-    const order = createOrder({ items, subtotal, deliveryFee, total, delivery: form, paymentMethod, paymentStatus: paymentMethod === 'Pay on delivery' ? 'pending' : 'awaiting confirmation', orderStatus: 'received' });
+  const submitOrder = async () => {
+    const order = await createOrder({ items, subtotal, deliveryFee, total, delivery: form, paymentMethod, paymentStatus: paymentMethod === 'Pay on delivery' ? 'pending' : 'awaiting confirmation', orderStatus: 'received' });
     clearCart();
     setComplete(order);
   };
 
-  if (complete) return <Shell><Seo page="home" title={`Order ${complete.id} | NexHSE Africa`} description="NexHSE Africa order confirmation." /><main className="mx-auto max-w-4xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Shop', '/shop'], ['Order confirmation', '/shop/checkout']]} /><div className="rounded-2xl bg-[hsl(var(--secondary))] p-8 sm:p-12"><span className="grid h-14 w-14 place-items-center rounded-full bg-[hsl(var(--accent))] text-white"><Check /></span><p className="mono-label mt-7 text-[10px] text-[hsl(var(--accent))]">Order received</p><h1 className="display mt-3 text-5xl text-[hsl(var(--primary))]">Thank you, {complete.delivery.name}.</h1><p className="mt-5 text-sm leading-7 text-[hsl(var(--muted-foreground))]">Order <strong>{complete.id}</strong> is recorded. Payment is currently <strong>{complete.paymentStatus}</strong>; the NexHSE team will confirm the next step using {complete.delivery.phone}.</p><div className="mt-8 grid gap-3 sm:grid-cols-3">{[['01', 'Received'], ['02', complete.paymentStatus === 'pending' ? 'Payment on delivery' : 'Payment confirmation'], ['03', 'Dispatch coordination']].map(([number, label]) => <div key={number} className="rounded-xl bg-white p-4"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{number}</p><p className="mt-2 text-sm font-bold text-[hsl(var(--primary))]">{label}</p></div>)}</div><Link href="/shop" className="focus-ring mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white">Continue shopping <ArrowUpRight size={15} /></Link></div></main></Shell>;
-  if (!items.length) return <Shell><main className="mx-auto max-w-3xl px-5 py-24 text-center"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Cart is empty</p><h1 className="display mt-4 text-5xl text-[hsl(var(--primary))]">Choose something for your team.</h1><Link href="/shop" className="focus-ring mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white">Browse shop <ArrowUpRight size={15} /></Link></main></Shell>;
+  if (complete) return <Shell><Seo page="home" title={`Order ${complete.id} | NexHSE Africa`} description="NexHSE Africa order confirmation." /><main className="mx-auto max-w-4xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Shop', '/shop'], ['Order confirmation', '/shop/checkout']]} /><div className="rounded-2xl bg-[hsl(var(--secondary))] p-8 sm:p-12"><span className="grid h-14 w-14 place-items-center rounded-full bg-[hsl(var(--accent))] text-white"><Check /></span><p className="mono-label mt-7 text-[10px] text-[hsl(var(--accent))]">Order received</p><h1 className="display mt-3 text-5xl text-[hsl(var(--primary))]">Thank you, {complete.delivery.name}.</h1><p className="mt-5 text-sm leading-7 text-[hsl(var(--muted-foreground))]">Order <strong>{complete.id}</strong> is recorded. Payment is currently <strong>{complete.paymentStatus}</strong>; the NexHSE team will confirm the next step using {complete.delivery.phone}.</p><div className="mt-8 grid gap-3 sm:grid-cols-3">{[['01', 'Received'], ['02', complete.paymentStatus === 'pending' ? 'Payment on delivery' : 'Payment confirmation'], ['03', 'Dispatch coordination']].map(([number, label]) => <div key={number} className="rounded-xl bg-white p-4"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{number}</p><p className="mt-2 text-sm font-bold text-[hsl(var(--primary))]">{label}</p></div>)}</div><Link href={shopHomeHref()} className="focus-ring mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white">Continue shopping <ArrowUpRight size={15} /></Link></div></main></Shell>;
+  if (!items.length) return <Shell><main className="mx-auto max-w-3xl px-5 py-24 text-center"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Cart is empty</p><h1 className="display mt-4 text-5xl text-[hsl(var(--primary))]">Choose something for your team.</h1><Link href={shopHomeHref()} className="focus-ring mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white">Browse shop <ArrowUpRight size={15} /></Link></main></Shell>;
 
   return <Shell><Seo page="home" title="Checkout | NexHSE Africa" description="Securely prepare your NexHSE Africa PPE and fire equipment order." /><main className="mx-auto max-w-7xl px-5 py-14 lg:px-8"><Breadcrumbs items={[['Shop', '/shop'], ['Checkout', '/shop/checkout']]} /><div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr]"><section><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Checkout / Step {step} of 3</p><div className="mt-5 flex gap-2">{['Delivery', 'Payment', 'Review'].map((label, index) => <div key={label} className="flex-1"><div className={`h-1 rounded-full ${index + 1 <= step ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--border))]'}`} /><span className="mt-2 block text-[10px] font-bold text-[hsl(var(--muted-foreground))]">{index + 1}. {label}</span></div>)}</div><div className="mt-10 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 sm:p-8">{step === 1 && <div><h1 className="display text-4xl text-[hsl(var(--primary))]">Where should we deliver?</h1><div className="mt-7 grid gap-4 sm:grid-cols-2">{[['name', 'Full name'], ['email', 'Email address'], ['phone', 'Phone number'], ['county', 'County'], ['address', 'Delivery address'], ['notes', 'Delivery notes']].map(([field, label]) => <label key={field} className={`block text-sm font-semibold text-[hsl(var(--primary))] ${field === 'address' || field === 'notes' ? 'sm:col-span-2' : ''}`}>{label}{field === 'notes' ? <textarea value={form[field as keyof DeliveryDetails]} onChange={event => update(field as keyof DeliveryDetails, event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent p-3 text-sm outline-none" data-testid={`input-checkout-${field}`} /> : <input value={form[field as keyof DeliveryDetails]} onChange={event => update(field as keyof DeliveryDetails, event.target.value)} type={field === 'email' ? 'email' : 'text'} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" data-testid={`input-checkout-${field}`} />}</label>)}</div></div>}{step === 2 && <div><h1 className="display text-4xl text-[hsl(var(--primary))]">Choose a payment rail.</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Payment infrastructure is prepared around a provider-ready status flow. Select how you want the NexHSE team to confirm settlement.</p><div className="mt-7 space-y-3">{[['M-Pesa', 'Mobile money confirmation will be attached to the order.'], ['Card', 'Card gateway placeholder ready for provider credentials.'], ['Bank transfer', 'Invoice and bank instructions will be issued by the team.'], ['Pay on delivery', 'Payment is collected according to the confirmed delivery arrangement.']].map(([method, text]) => <button key={method} type="button" onClick={() => setPaymentMethod(method as ShopOrder['paymentMethod'])} className={`focus-ring flex w-full items-start gap-4 rounded-xl border p-4 text-left ${paymentMethod === method ? 'border-[hsl(var(--accent))] bg-[hsl(var(--secondary))]' : 'border-[hsl(var(--border))]'}`}><span className="mt-1 grid h-5 w-5 place-items-center rounded-full border border-[hsl(var(--accent))]">{paymentMethod === method && <span className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--accent))]" />}</span><span><strong className="block text-sm text-[hsl(var(--primary))]">{method}</strong><span className="mt-1 block text-xs leading-5 text-[hsl(var(--muted-foreground))]">{text}</span></span></button>)}</div></div>}{step === 3 && <div><h1 className="display text-4xl text-[hsl(var(--primary))]">Review your order.</h1><div className="mt-7 space-y-3">{items.map(item => <div key={item.name} className="flex items-center justify-between gap-4 border-b border-[hsl(var(--border))] pb-3 text-sm"><span className="font-semibold text-[hsl(var(--primary))]">{item.name} x{item.quantity}</span><span className="font-bold text-[hsl(var(--primary))]">KSh {(item.price * item.quantity).toLocaleString()}</span></div>)}</div><div className="mt-7 space-y-2 text-sm text-[hsl(var(--muted-foreground))]"><p>Deliver to: <strong className="text-[hsl(var(--primary))]">{form.name}, {form.county}</strong></p><p>Payment: <strong className="text-[hsl(var(--primary))]">{paymentMethod}</strong></p><p>Payment status: <strong className="text-[hsl(var(--primary))]">{paymentMethod === 'Pay on delivery' ? 'pending' : 'awaiting confirmation'}</strong></p></div></div>}<div className="mt-10 flex justify-between gap-3 border-t border-[hsl(var(--border))] pt-6"><button type="button" onClick={() => setStep(value => Math.max(1, value - 1))} className={`focus-ring min-h-11 rounded-full border border-[hsl(var(--border))] px-5 text-xs font-bold text-[hsl(var(--primary))] ${step === 1 ? 'invisible' : ''}`}>Back</button>{step < 3 ? <button type="button" onClick={() => setStep(value => value + 1)} disabled={!canContinue} className="focus-ring min-h-11 rounded-full bg-[hsl(var(--primary))] px-6 text-xs font-bold text-white disabled:opacity-40">Continue <ChevronRight size={14} className="ml-1 inline" /></button> : <button type="button" onClick={submitOrder} className="focus-ring min-h-11 rounded-full bg-[hsl(var(--accent))] px-6 text-xs font-bold text-white">Place order <ArrowUpRight size={15} className="ml-1 inline" /></button>}</div></div></section><aside className="h-fit rounded-2xl bg-[hsl(var(--primary))] p-6 text-white lg:sticky lg:top-24"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Order summary</p><div className="mt-6 space-y-3">{items.map(item => <div key={item.name} className="flex justify-between gap-3 text-sm text-white/75"><span>{item.name} x{item.quantity}</span><span>KSh {(item.price * item.quantity).toLocaleString()}</span></div>)}</div><div className="mt-6 space-y-2 border-t border-white/15 pt-4 text-sm"><p className="flex justify-between text-white/70"><span>Subtotal</span><span>KSh {subtotal.toLocaleString()}</span></p><p className="flex justify-between text-white/70"><span>Delivery</span><span>KSh {deliveryFee.toLocaleString()}</span></p><p className="flex justify-between pt-2 text-lg font-bold"><span>Total</span><span>KSh {total.toLocaleString()}</span></p></div><p className="mt-6 text-xs leading-5 text-white/55">Your order and payment state will appear in the private admin order queue after submission.</p></aside></div></main></Shell>;
 }
@@ -855,7 +1007,7 @@ function ProductDetail() {
 
   if (!product) return <NotFound />;
 
-  return <Shell><Seo page="home" title={`${product.name} | NexHSE Africa Shop`} description={product.description} /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16"><Breadcrumbs items={[['Shop', '/shop'], [product.name, `/shop/${productSlug(product)}`]]} /><div className="mt-10 grid items-center gap-10 lg:grid-cols-[.9fr_1.1fr]"><div><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">{product.category}</p><h1 className="display mt-5 max-w-3xl text-5xl leading-[1.02] sm:text-7xl">{product.name}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{product.description}</p><p className="mt-5 text-sm font-bold text-[hsl(var(--secondary))]">{product.stock} available</p></div><div className="overflow-hidden rounded-[42%_58%_52%_48%/48%_42%_58%_52%] border border-[hsl(var(--secondary)/.45)] bg-[hsl(var(--secondary)/.15)] p-2"><img src={product.image} alt={product.name} className="aspect-[4/3] w-full object-cover" /></div></div></div></section><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr]"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Product details</p><h2 className="display mt-3 text-4xl text-[hsl(var(--primary))]">Prepare your order.</h2><p className="mt-5 max-w-xl text-sm leading-7 text-[hsl(var(--muted-foreground))]">Choose the quantity your team needs, then add it to your basket. Your basket stays available as you move between the catalogue and product pages.</p></div><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><p className="text-3xl font-bold text-[hsl(var(--primary))]">KSh {(product.price * quantity).toLocaleString()}</p><p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">KSh {product.price.toLocaleString()} each</p><div className="mt-7 flex items-center gap-3"><button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))} className="focus-ring grid h-11 w-11 place-items-center rounded-full border border-[hsl(var(--border))] text-lg font-bold text-[hsl(var(--primary))]" aria-label="Decrease quantity" data-testid="button-product-decrease">-</button><span className="min-w-8 text-center font-bold text-[hsl(var(--primary))]">{quantity}</span><button type="button" onClick={() => setQuantity(value => Math.min(product.stock, value + 1))} className="focus-ring grid h-11 w-11 place-items-center rounded-full border border-[hsl(var(--border))] text-lg font-bold text-[hsl(var(--primary))]" aria-label="Increase quantity" data-testid="button-product-increase">+</button><button type="button" onClick={() => addToCart(product.name, quantity)} className="focus-ring ml-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white" data-testid="button-product-add-to-cart">Add to cart <ArrowUpRight size={15} /></button></div><Link href="/shop" className="focus-ring mt-5 inline-flex text-xs font-bold text-[hsl(var(--primary))]">Back to shop <ArrowUpRight size={14} className="ml-1" /></Link></div></div></section></main></Shell>;
+  return <Shell><Seo page="home" title={`${product.name} | NexHSE Africa Shop`} description={product.description} /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-14 pt-12 lg:px-8 lg:pb-20 lg:pt-16"><Breadcrumbs items={[['Shop', '/shop'], [product.name, `/shop/${productSlug(product)}`]]} /><div className="mt-10 grid items-center gap-10 lg:grid-cols-[.9fr_1.1fr]"><div><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">{product.category}</p><h1 className="display mt-5 max-w-3xl text-5xl leading-[1.02] sm:text-7xl">{product.name}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{product.description}</p><p className="mt-5 text-sm font-bold text-[hsl(var(--secondary))]">{product.stock} available</p></div><div className="overflow-hidden rounded-[42%_58%_52%_48%/48%_42%_58%_52%] border border-[hsl(var(--secondary)/.45)] bg-[hsl(var(--secondary)/.15)] p-2"><img src={product.image} alt={product.name} className="aspect-[4/3] w-full object-cover" /></div></div></div></section><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr]"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Product details</p><h2 className="display mt-3 text-4xl text-[hsl(var(--primary))]">Prepare your order.</h2><p className="mt-5 max-w-xl text-sm leading-7 text-[hsl(var(--muted-foreground))]">Choose the quantity your team needs, then add it to your basket. Your basket stays available as you move between the catalogue and product pages.</p></div><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><p className="text-3xl font-bold text-[hsl(var(--primary))]">KSh {(product.price * quantity).toLocaleString()}</p><p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">KSh {product.price.toLocaleString()} each</p><div className="mt-7 flex items-center gap-3"><button type="button" onClick={() => setQuantity(value => Math.max(1, value - 1))} className="focus-ring grid h-11 w-11 place-items-center rounded-full border border-[hsl(var(--border))] text-lg font-bold text-[hsl(var(--primary))]" aria-label="Decrease quantity" data-testid="button-product-decrease">-</button><span className="min-w-8 text-center font-bold text-[hsl(var(--primary))]">{quantity}</span><button type="button" onClick={() => setQuantity(value => Math.min(product.stock, value + 1))} className="focus-ring grid h-11 w-11 place-items-center rounded-full border border-[hsl(var(--border))] text-lg font-bold text-[hsl(var(--primary))]" aria-label="Increase quantity" data-testid="button-product-increase">+</button><button type="button" onClick={() => addToCart(product.name, quantity)} className="focus-ring ml-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white" data-testid="button-product-add-to-cart">Add to cart <ArrowUpRight size={15} /></button></div><Link href={shopHomeHref()} className="focus-ring mt-5 inline-flex text-xs font-bold text-[hsl(var(--primary))]">Back to shop <ArrowUpRight size={14} className="ml-1" /></Link></div></div></section></main></Shell>;
 }
 
 function AdminProductEditorPage({ products, updateProduct }: { products: ShopProduct[]; updateProduct: (name: string, changes: Partial<ShopProduct>) => void }) {
@@ -873,7 +1025,7 @@ function AdminProductEditorPage({ products, updateProduct }: { products: ShopPro
     setSaved(true);
   };
   const inputFields: [keyof ShopProduct, string][] = [['name', 'Product name'], ['price', 'Price (KES)'], ['stock', 'Stock quantity'], ['image', 'Image path'], ['seoTitle', 'SEO title'], ['seoDescription', 'SEO description']];
-  return <Shell><Seo page="home" title="Product SEO Manager | NexHSE Africa" description="Private shop product and SEO management workspace." /><main><PageIntro eyebrow="Private admin / shop SEO" title="Edit product data for search and customers." text="Every saved field below feeds the public product page, structured Product data, social metadata and the AI-readable shop catalogue." image={form.image} /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><aside><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Catalogue products</p><div className="mt-5 space-y-2">{products.map(item => <button key={item.name} type="button" onClick={() => setSelectedName(item.name)} className={`focus-ring flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 text-left text-xs font-bold ${item.name === product.name ? 'border-[hsl(var(--accent))] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`}><img src={item.image} alt="" className="h-9 w-9 rounded-lg object-cover" />{item.name}</button>)}</div></aside><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{form.category} / {form.brand}</p><h2 className="display mt-3 text-4xl text-[hsl(var(--primary))]">Product and search fields.</h2></div><Link href={`/shop/${productSlug(product)}`} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View public page <ArrowUpRight size={14} className="ml-1 inline" /></Link></div><div className="mt-8 grid gap-5 sm:grid-cols-2">{inputFields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={form[field] as string | number} onChange={event => update(field, field === 'price' || field === 'stock' ? Number(event.target.value) : event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" data-testid={`input-admin-product-${field}`} /></label>)}</div><div className="mt-5 space-y-5">{[['longDescription', 'Detailed product description'], ['keywords', 'Keywords, comma separated'], ['features', 'Features, comma separated'], ['useCases', 'Use cases, comma separated']].map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<textarea value={Array.isArray(form[field as keyof ShopProduct]) ? (form[field as keyof ShopProduct] as string[]).join(', ') : form[field as keyof ShopProduct] as string} onChange={event => update(field as keyof ShopProduct, ['keywords', 'features', 'useCases'].includes(field) ? event.target.value.split(',').map(value => value.trim()).filter(Boolean) : event.target.value)} className="focus-ring mt-2 min-h-24 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent p-3 text-sm outline-none" data-testid={`textarea-admin-product-${field}`} /></label>)}</div><div className="mt-7 flex items-center gap-4"><button type="button" onClick={save} className="focus-ring min-h-12 rounded-full bg-[hsl(var(--primary))] px-5 text-sm font-bold text-white" data-testid="button-admin-product-save">Save product data <Check size={15} className="ml-1 inline" /></button>{saved && <span className="text-xs font-bold text-[hsl(var(--accent))]">Saved to the shared catalogue.</span>}</div></div></div></section></main></Shell>;
+  return <Shell><Seo page="home" title="Product SEO Manager | NexHSE Africa" description="Private shop product and SEO management workspace." /><main><PageIntro eyebrow="Private admin / shop SEO" title="Edit product data for search and customers." text="Every saved field below feeds the public product page, structured Product data, social metadata and the AI-readable shop catalogue." image={form.image} /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><aside><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Catalogue products</p><div className="mt-5 space-y-2">{products.map(item => <button key={item.name} type="button" onClick={() => setSelectedName(item.name)} className={`focus-ring flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 text-left text-xs font-bold ${item.name === product.name ? 'border-[hsl(var(--accent))] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`}><img src={item.image} alt="" className="h-9 w-9 rounded-lg object-cover" />{item.name}</button>)}</div></aside><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 sm:p-8"><div className="flex items-start justify-between gap-4"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{form.category} / {form.brand}</p><h2 className="display mt-3 text-4xl text-[hsl(var(--primary))]">Product and search fields.</h2></div><Link href={productDetailHref(product)} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View public page <ArrowUpRight size={14} className="ml-1 inline" /></Link></div><div className="mt-8 grid gap-5 sm:grid-cols-2">{inputFields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={form[field] as string | number} onChange={event => update(field, field === 'price' || field === 'stock' ? Number(event.target.value) : event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" data-testid={`input-admin-product-${field}`} /></label>)}</div><div className="mt-5 space-y-5">{[['longDescription', 'Detailed product description'], ['keywords', 'Keywords, comma separated'], ['features', 'Features, comma separated'], ['useCases', 'Use cases, comma separated']].map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<textarea value={Array.isArray(form[field as keyof ShopProduct]) ? (form[field as keyof ShopProduct] as string[]).join(', ') : form[field as keyof ShopProduct] as string} onChange={event => update(field as keyof ShopProduct, ['keywords', 'features', 'useCases'].includes(field) ? event.target.value.split(',').map(value => value.trim()).filter(Boolean) : event.target.value)} className="focus-ring mt-2 min-h-24 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent p-3 text-sm outline-none" data-testid={`textarea-admin-product-${field}`} /></label>)}</div><div className="mt-7 flex items-center gap-4"><button type="button" onClick={save} className="focus-ring min-h-12 rounded-full bg-[hsl(var(--primary))] px-5 text-sm font-bold text-white" data-testid="button-admin-product-save">Save product data <Check size={15} className="ml-1 inline" /></button>{saved && <span className="text-xs font-bold text-[hsl(var(--accent))]">Saved to the shared catalogue.</span>}</div></div></div></section></main></Shell>;
 }
 
 function AdminProductCatalogue() {
@@ -883,7 +1035,7 @@ function AdminProductCatalogue() {
 
   return <AdminProductEditorPage products={products} updateProduct={updateProduct} />;
 
-  return <Shell><Seo page="home" title="Product Catalogue Admin | NexHSE Africa" description="Private product catalogue management view for the NexHSE Africa shop." /><main><PageIntro eyebrow="Private admin / shop" title="The live product catalogue." text="This view reads the same product records used by the public shop, keeping names, prices, images, categories and stock visibility aligned." image="/assets/shop/helmet.jpg" /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="mb-8 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} type="button" onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-admin-product-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-4 font-bold">Product</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Price</th><th className="p-4 font-bold">Stock</th><th className="p-4 font-bold">Public page</th></tr></thead><tbody>{products.map(product => <tr key={product.name} className="border-t border-[hsl(var(--border))]"><td className="flex items-center gap-3 p-4 font-semibold text-[hsl(var(--primary))]"><img src={product.image} alt="" className="h-12 w-12 rounded-lg object-cover" />{product.name}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.category}</td><td className="p-4 font-semibold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.stock}</td><td className="p-4"><Link href={`/shop/${productSlug(product)}`} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View product <ArrowUpRight size={14} className="ml-1 inline" /></Link></td></tr>)}</tbody></table></div></section></main></Shell>;
+  return <Shell><Seo page="home" title="Product Catalogue Admin | NexHSE Africa" description="Private product catalogue management view for the NexHSE Africa shop." /><main><PageIntro eyebrow="Private admin / shop" title="The live product catalogue." text="This view reads the same product records used by the public shop, keeping names, prices, images, categories and stock visibility aligned." image="/assets/shop/helmet.jpg" /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="mb-8 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} type="button" onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-admin-product-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-4 font-bold">Product</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Price</th><th className="p-4 font-bold">Stock</th><th className="p-4 font-bold">Public page</th></tr></thead><tbody>{products.map(product => <tr key={product.name} className="border-t border-[hsl(var(--border))]"><td className="flex items-center gap-3 p-4 font-semibold text-[hsl(var(--primary))]"><img src={product.image} alt="" className="h-12 w-12 rounded-lg object-cover" />{product.name}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.category}</td><td className="p-4 font-semibold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.stock}</td><td className="p-4"><Link href={productDetailHref(product)} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View product <ArrowUpRight size={14} className="ml-1 inline" /></Link></td></tr>)}</tbody></table></div></section></main></Shell>;
 }
 
 function LegacyAdminDashboard() {
@@ -907,7 +1059,7 @@ function LegacyAdminDashboard() {
     { id: '#ORD-1050', item: 'Protective Work Gloves', status: 'Ready to ship', total: 'KSh 750' },
   ];
 
-  return <Shell><Seo page="home" title="Operations Dashboard | NexHSE Africa" description="Private operational dashboard for storefront management, content updates, inventory oversight and operational analytics." /><main><PageIntro eyebrow="Private admin" title="NexHSE operations control centre." text="This private dashboard supports the shop, content workflow, stock visibility and operational reporting for the NexHSE Africa business." image={fireImage} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Shop', '/shop'], ['Admin', '/admin']]} /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{metrics.map(metric => <div key={metric.label} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{metric.label}</p><div className="mt-6 flex items-end justify-between"><span className="display text-4xl text-[hsl(var(--primary))]">{metric.value}</span><span className="rounded-full bg-[hsl(var(--secondary))] px-2 py-1 text-[10px] font-bold text-[hsl(var(--primary))]">{metric.change}</span></div><p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">{metric.detail}</p></div>)}</div><div className="mt-14 grid gap-6 xl:grid-cols-[1.1fr_.9fr]"><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Operational tasks</p><h3 className="mt-2 text-2xl font-bold text-[hsl(var(--primary))]">Site management queue</h3></div><button className="focus-ring min-h-10 rounded-full border border-[hsl(var(--border))] px-3 text-[10px] font-bold text-[hsl(var(--primary))]">Export tasks</button></div><div className="mt-6 space-y-4">{maintenance.map(item => <div key={item.name} className="flex items-center justify-between rounded-xl border border-[hsl(var(--border))] p-4"><div><p className="font-bold text-[hsl(var(--primary))]">{item.name}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Owner: {item.owner}</p></div><span className="rounded-full bg-[hsl(var(--secondary))] px-2 py-1 text-[9px] font-bold text-[hsl(var(--primary))]">{item.status}</span></div>)}</div></div><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--primary))] p-6 text-white"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Operations summary</p><h3 className="mt-2 text-2xl font-bold">Procurement funnel</h3><div className="mt-6 space-y-4">{[['Leads', '48'], ['Quoted', '19'], ['Orders', '34'], ['Ready to ship', '12']].map(([label, value]) => <div key={label} className="flex items-center justify-between border-b border-white/10 pb-3"><span className="text-sm text-white/70">{label}</span><span className="text-lg font-bold">{value}</span></div>)}</div></div></div><div className="mt-14 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Storefront</p><h3 className="mt-2 text-2xl font-bold text-[hsl(var(--primary))]">Recent orders</h3></div><Link href="/shop" className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View shop</Link></div><div className="mt-6 overflow-hidden rounded-xl border border-[hsl(var(--border))]"><table className="w-full text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-3 font-bold">Order</th><th className="p-3 font-bold">Item</th><th className="p-3 font-bold">Status</th><th className="p-3 font-bold">Total</th></tr></thead><tbody>{orders.map(order => <tr key={order.id} className="border-t border-[hsl(var(--border))]"><td className="p-3 text-[hsl(var(--primary))] font-semibold">{order.id}</td><td className="p-3 text-[hsl(var(--muted-foreground))]">{order.item}</td><td className="p-3"><span className="rounded-full bg-[hsl(var(--secondary))] px-2 py-1 text-[9px] font-bold text-[hsl(var(--primary))]">{order.status}</span></td><td className="p-3 text-[hsl(var(--primary))] font-semibold">{order.total}</td></tr>)}</tbody></table></div></div></section></main></Shell>;
+  return <Shell><Seo page="home" title="Operations Dashboard | NexHSE Africa" description="Private operational dashboard for storefront management, content updates, inventory oversight and operational analytics." /><main><PageIntro eyebrow="Private admin" title="NexHSE operations control centre." text="This private dashboard supports the shop, content workflow, stock visibility and operational reporting for the NexHSE Africa business." image={fireImage} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Shop', '/shop'], ['Admin', '/admin']]} /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{metrics.map(metric => <div key={metric.label} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{metric.label}</p><div className="mt-6 flex items-end justify-between"><span className="display text-4xl text-[hsl(var(--primary))]">{metric.value}</span><span className="rounded-full bg-[hsl(var(--secondary))] px-2 py-1 text-[10px] font-bold text-[hsl(var(--primary))]">{metric.change}</span></div><p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">{metric.detail}</p></div>)}</div><div className="mt-14 grid gap-6 xl:grid-cols-[1.1fr_.9fr]"><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Operational tasks</p><h3 className="mt-2 text-2xl font-bold text-[hsl(var(--primary))]">Site management queue</h3></div><button className="focus-ring min-h-10 rounded-full border border-[hsl(var(--border))] px-3 text-[10px] font-bold text-[hsl(var(--primary))]">Export tasks</button></div><div className="mt-6 space-y-4">{maintenance.map(item => <div key={item.name} className="flex items-center justify-between rounded-xl border border-[hsl(var(--border))] p-4"><div><p className="font-bold text-[hsl(var(--primary))]">{item.name}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Owner: {item.owner}</p></div><span className="rounded-full bg-[hsl(var(--secondary))] px-2 py-1 text-[9px] font-bold text-[hsl(var(--primary))]">{item.status}</span></div>)}</div></div><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--primary))] p-6 text-white"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Operations summary</p><h3 className="mt-2 text-2xl font-bold">Procurement funnel</h3><div className="mt-6 space-y-4">{[['Leads', '48'], ['Quoted', '19'], ['Orders', '34'], ['Ready to ship', '12']].map(([label, value]) => <div key={label} className="flex items-center justify-between border-b border-white/10 pb-3"><span className="text-sm text-white/70">{label}</span><span className="text-lg font-bold">{value}</span></div>)}</div></div></div><div className="mt-14 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Storefront</p><h3 className="mt-2 text-2xl font-bold text-[hsl(var(--primary))]">Recent orders</h3></div><Link href={shopHomeHref()} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View shop</Link></div><div className="mt-6 overflow-hidden rounded-xl border border-[hsl(var(--border))]"><table className="w-full text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-3 font-bold">Order</th><th className="p-3 font-bold">Item</th><th className="p-3 font-bold">Status</th><th className="p-3 font-bold">Total</th></tr></thead><tbody>{orders.map(order => <tr key={order.id} className="border-t border-[hsl(var(--border))]"><td className="p-3 text-[hsl(var(--primary))] font-semibold">{order.id}</td><td className="p-3 text-[hsl(var(--muted-foreground))]">{order.item}</td><td className="p-3"><span className="rounded-full bg-[hsl(var(--secondary))] px-2 py-1 text-[9px] font-bold text-[hsl(var(--primary))]">{order.status}</span></td><td className="p-3 text-[hsl(var(--primary))] font-semibold">{order.total}</td></tr>)}</tbody></table></div></div></section></main></Shell>;
 }
 
 function AdminDashboard() {
@@ -963,7 +1115,109 @@ function AdminBlogManager() {
   return <Shell><Seo page="blog" title="Blog Manager | NexHSE Africa" description="Private NexHSE Africa blog publishing workspace." /><main><PageIntro eyebrow="Private admin / blog" title="Publish useful HSE knowledge." text="Add a title, photo, excerpt and full article copy. New posts are written to the shared blog catalogue used by the public site." image={fieldImage} /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Blog', '/admin/blog']]} /><div className="grid gap-10 lg:grid-cols-[.85fr_1.15fr]"><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">New article</p><h2 className="display mt-3 text-4xl text-[hsl(var(--primary))]">Compose and publish.</h2><div className="mt-7 space-y-4">{fields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={form[field]} onChange={event => update(field, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" data-testid={`input-admin-blog-${field}`} /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))]">Article body<textarea value={form.body} onChange={event => update('body', event.target.value)} placeholder="Write one paragraph per line" className="focus-ring mt-2 min-h-40 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent p-3 text-sm outline-none" data-testid="textarea-admin-blog-body" /></label><button type="button" onClick={publish} className="focus-ring min-h-12 rounded-full bg-[hsl(var(--primary))] px-5 text-sm font-bold text-white" data-testid="button-admin-blog-publish">Publish article <ArrowUpRight size={15} className="ml-1 inline" /></button>{saved && <p className="text-xs font-bold text-[hsl(var(--accent))]">Published to the shared blog catalogue.</p>}</div></div><div><div className="mb-5 flex items-end justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Live catalogue</p><h2 className="display mt-3 text-4xl text-[hsl(var(--primary))]">{posts.length} articles</h2></div><Link href="/blog" className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View public blog <ArrowUpRight size={14} className="ml-1 inline" /></Link></div><div className="space-y-3">{posts.map(post => <div key={post.slug} className="flex gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4"><img src={post.image} alt="" className="h-20 w-24 rounded-xl object-cover" /><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{post.category} · {post.date}</p><h3 className="mt-2 font-bold text-[hsl(var(--primary))]">{post.title}</h3><p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">{post.excerpt}</p></div></div>)}</div></div></div></section></main></Shell>;
 }
 
-function AppRouter() { return <Switch><Route path="/" component={Home} /><Route path="/about" component={About} /><Route path="/services" component={Services} /><Route path="/services/:slug" component={ServiceDetail} /><Route path="/shop" component={Shop} /><Route path="/shop/checkout" component={ShopCheckout} /><Route path="/shop/:slug" component={ProductDetail} /><Route path="/admin" component={AdminDashboard} /><Route path="/admin/products" component={AdminProductCatalogue} /><Route path="/admin/blog" component={AdminBlogManager} /><Route path="/training" component={Training} /><Route path="/training/:course" component={CourseDetail} /><Route path="/projects" component={Projects} /><Route path="/projects/:project" component={ProjectDetail} /><Route path="/accreditations" component={Accreditations} /><Route path="/testimonials" component={Testimonials} /><Route path="/knowledge" component={Knowledge} /><Route path="/knowledge/:article" component={ArticleDetail} /><Route path="/faqs" component={HseFaqs} /><Route path="/blog" component={DynamicBlog} /><Route path="/blog/:slug" component={DynamicBlogDetail} /><Route path="/contact" component={Contact} /><Route path="/request-a-quote" component={Quote} /><Route component={NotFound} /></Switch>; }
+function ShopEntry() {
+  useEffect(() => {
+    if (['nexhse.co.ke', 'www.nexhse.co.ke'].includes(window.location.hostname)) window.location.replace('https://shop.nexhse.co.ke');
+  }, []);
+  return <Shop />;
+}
+
+function PublicSiteRedirect() {
+  const pathname = window.location.pathname;
+  useEffect(() => { window.location.replace(`${siteUrl}${pathname}`); }, [pathname]);
+  return <main className="grid min-h-[60vh] place-items-center px-5 text-sm text-[hsl(var(--muted-foreground))]">Opening NexHSE Africa…</main>;
+}
+
+function AdminOrdersPage() {
+  return <Shell><Seo page="home" title="Order Management | NexHSE Africa" description="Private order fulfilment, customer delivery and payment operations." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Orders', '/admin/orders']]} /><SectionHeader eyebrow="Commerce operations" title="Order fulfilment and payment tracking." text="Review delivery details, payment rails, amounts and update fulfilment status." /><AdminOrderPanel /></main></Shell>;
+}
+
+function AdminCustomersPage() {
+  const { orders } = useShopOrders();
+  const customers = Array.from(orders.reduce((records, order) => {
+    const key = order.delivery.email.trim().toLowerCase();
+    const current = records.get(key) ?? { ...order.delivery, orders: 0, spend: 0, lastOrder: order.createdAt };
+    current.orders += 1;
+    current.spend += order.total;
+    if (order.createdAt > current.lastOrder) current.lastOrder = order.createdAt;
+    records.set(key, current);
+    return records;
+  }, new Map<string, DeliveryDetails & { orders: number; spend: number; lastOrder: string }>()).values());
+
+  return <Shell><Seo page="home" title="Customer CRM | NexHSE Africa" description="Private NexHSE customer relationship management and order history." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Customers', '/admin/customers']]} /><SectionHeader eyebrow="CRM / customer accounts" title="Customer directory and order history." text="Customer records are assembled from submitted shop orders and stay synchronized with the order queue." /><div className="mb-6 grid gap-4 sm:grid-cols-3">{[{ label: 'Customers', value: customers.length }, { label: 'Orders', value: orders.length }, { label: 'Customer spend', value: `KSh ${customers.reduce((sum, customer) => sum + customer.spend, 0).toLocaleString()}` }].map(metric => <div key={metric.label} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{metric.label}</p><p className="display mt-4 text-3xl text-[hsl(var(--primary))]">{metric.value}</p></div>)}</div>{customers.length ? <div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr>{['Customer', 'Phone', 'Delivery location', 'Orders', 'Lifetime spend', 'Last order'].map(label => <th key={label} className="p-4 font-bold">{label}</th>)}</tr></thead><tbody>{customers.map(customer => <tr key={customer.email} className="border-t border-[hsl(var(--border))]"><td className="p-4"><p className="font-bold text-[hsl(var(--primary))]">{customer.name}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{customer.email}</p></td><td className="p-4">{customer.phone}</td><td className="p-4">{customer.address}, {customer.county}</td><td className="p-4">{customer.orders}</td><td className="p-4 font-bold">KSh {customer.spend.toLocaleString()}</td><td className="p-4">{new Date(customer.lastOrder).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <EmptyState title="No customer orders yet." text="Customers are added to the CRM automatically when they complete shop checkout." href="https://shop.nexhse.co.ke" actionLabel="Open shop" />}</main></Shell>;
+}
+
+function AdminServiceDeskPage() {
+  const { tickets, addTicket, updateTicket } = useServiceTickets();
+  const [form, setForm] = useState({ name: '', email: '', subject: '', priority: 'normal' as ServiceTicket['priority'], details: '' });
+  const [saved, setSaved] = useState(false);
+  const update = (field: keyof typeof form, value: string) => setForm(current => ({ ...current, [field]: value }));
+  const create = () => {
+    if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.details.trim()) return;
+    addTicket(form);
+    setForm({ name: '', email: '', subject: '', priority: 'normal', details: '' });
+    setSaved(true);
+  };
+  return <Shell><Seo page="home" title="Customer Service Desk | NexHSE Africa" description="Private customer support and service request management workspace." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Service desk', '/admin/service']]} /><SectionHeader eyebrow="Customer service / case management" title="Track customer follow-up from one desk." text="Log support requests, assign urgency and move each case through open, in progress and resolved states." /><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><section className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Log support case</p><div className="mt-5 space-y-4">{[['name', 'Customer name'], ['email', 'Customer email'], ['subject', 'Subject']].map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={form[field as keyof typeof form]} onChange={event => update(field as keyof typeof form, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))]">Priority<select value={form.priority} onChange={event => update('priority', event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-white px-3 text-sm"><option value="normal">Normal</option><option value="urgent">Urgent</option></select></label><label className="block text-sm font-semibold text-[hsl(var(--primary))]">Request details<textarea value={form.details} onChange={event => update('details', event.target.value)} className="focus-ring mt-2 min-h-28 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent p-3 text-sm outline-none" /></label><button type="button" onClick={create} className="focus-ring min-h-11 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white">Create case <ArrowUpRight size={14} className="ml-1 inline" /></button>{saved && <p className="text-xs font-bold text-[hsl(var(--accent))]">Case logged and saved in this browser.</p>}</div></section><section><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Support inbox</p><h2 className="display mt-2 text-3xl text-[hsl(var(--primary))]">{tickets.length} cases</h2></div><span className="text-xs text-[hsl(var(--muted-foreground))]">{tickets.filter(ticket => ticket.status !== 'resolved').length} need attention</span></div><div className="mt-5 space-y-3">{tickets.map(ticket => <article key={ticket.id} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{ticket.id} · {ticket.priority}</p><h3 className="mt-2 font-bold text-[hsl(var(--primary))]">{ticket.subject}</h3><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{ticket.name} · {ticket.email}</p><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{ticket.details}</p></div><select value={ticket.status} onChange={event => updateTicket(ticket.id, event.target.value as ServiceTicket['status'])} className="focus-ring min-h-10 rounded-xl border border-[hsl(var(--border))] bg-white px-3 text-xs font-bold" aria-label={`Update ${ticket.id} status`}><option>open</option><option>in progress</option><option>resolved</option></select></div></article>)}</div>{tickets.length === 0 && <EmptyState title="Your support inbox is clear." text="Create a case when a customer needs follow-up. Cases and status changes persist in this browser." />}</section></div></main></Shell>;
+}
+
+function AdminAccessGate({ children }: { children: ReactNode }) {
+  const [authenticated, setAuthenticated] = useState(import.meta.env.DEV);
+  const [checking, setChecking] = useState(!import.meta.env.DEV);
+  const [credential, setCredential] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    document.title = 'Admin sign in | NexHSE Africa';
+    for (const name of ['robots', 'googlebot', 'bingbot']) {
+      let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+      if (!meta) { meta = document.createElement('meta'); meta.name = name; document.head.appendChild(meta); }
+      meta.content = 'noindex, nofollow';
+    }
+    if (import.meta.env.DEV) return;
+    let active = true;
+    void fetch('/api/admin-session', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.json()).then(result => {
+      if (active) setAuthenticated(Boolean(result.authenticated));
+    }).catch(() => undefined).finally(() => { if (active) setChecking(false); });
+    return () => { active = false; };
+  }, []);
+
+  const signIn = async () => {
+    setError('');
+    try {
+      const response = await fetch('/api/admin-session', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: credential }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Unable to sign in');
+      setAuthenticated(true);
+      setCredential('');
+    } catch (issue) { setError(issue instanceof Error ? issue.message : 'Unable to sign in'); }
+  };
+
+  if (authenticated) return <>{children}</>;
+  return <main className="grid min-h-[100dvh] place-items-center bg-[hsl(var(--primary))] px-5 py-12"><div className="w-full max-w-md rounded-2xl border border-white/15 bg-white p-7 shadow-2xl sm:p-9"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">NexHSE / operations</p><h1 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Admin sign in.</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Use the admin credential configured for this deployment.</p>{checking ? <p className="mt-7 text-sm text-[hsl(var(--muted-foreground))]">Checking session…</p> : <div className="mt-7"><label className="block text-sm font-semibold text-[hsl(var(--primary))]">Admin credential<input type="password" value={credential} onChange={event => setCredential(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void signIn(); }} autoComplete="current-password" className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] px-3 text-sm outline-none" data-testid="input-admin-credential" /></label><button type="button" onClick={() => void signIn()} disabled={!credential} className="focus-ring mt-5 min-h-12 w-full rounded-full bg-[hsl(var(--primary))] text-sm font-bold text-white disabled:opacity-40" data-testid="button-admin-sign-in">Sign in</button>{error && <p role="alert" className="mt-4 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</div>}</div></main>;
+}
+
+function AdminWorkspaceRoute() {
+  const [location] = useLocation();
+  const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
+  const path = isAdminHost ? location : location.replace(/^\/admin(?=\/|$)/, '') || '/';
+  const page = path === '/' ? <AdminDashboard /> : path === '/products' ? <AdminProductCatalogue /> : path === '/blog' ? <AdminBlogManager /> : path === '/orders' ? <AdminOrdersPage /> : path === '/customers' ? <AdminCustomersPage /> : path === '/service' ? <AdminServiceDeskPage /> : <NotFound />;
+  return <AdminAccessGate>{page}</AdminAccessGate>;
+}
+
+function AppRouter() {
+  const hostname = window.location.hostname.toLowerCase();
+
+  if (hostname === 'shop.nexhse.co.ke') {
+    return <Switch><Route path="/" component={Shop} /><Route path="/checkout" component={ShopCheckout} /><Route path="/contact" component={PublicSiteRedirect} /><Route path="/request-a-quote" component={PublicSiteRedirect} /><Route path="/shop" component={Shop} /><Route path="/shop/checkout" component={ShopCheckout} /><Route path="/shop/:slug" component={ProductDetail} /><Route path="/:slug" component={ProductDetail} /><Route component={NotFound} /></Switch>;
+  }
+
+  if (hostname === 'admin.nexhse.co.ke') {
+    return <AdminWorkspaceRoute />;
+  }
+
+  return <Switch><Route path="/" component={Home} /><Route path="/about" component={About} /><Route path="/services" component={Services} /><Route path="/services/:slug" component={ServiceDetail} /><Route path="/shop" component={ShopEntry} /><Route path="/shop/checkout" component={ShopCheckout} /><Route path="/shop/:slug" component={ProductDetail} /><Route path="/admin" component={AdminWorkspaceRoute} /><Route path="/admin/products" component={AdminWorkspaceRoute} /><Route path="/admin/blog" component={AdminWorkspaceRoute} /><Route path="/admin/orders" component={AdminWorkspaceRoute} /><Route path="/admin/customers" component={AdminWorkspaceRoute} /><Route path="/admin/service" component={AdminWorkspaceRoute} /><Route path="/training" component={Training} /><Route path="/training/:course" component={CourseDetail} /><Route path="/projects" component={Projects} /><Route path="/projects/:project" component={ProjectDetail} /><Route path="/accreditations" component={Accreditations} /><Route path="/testimonials" component={Testimonials} /><Route path="/knowledge" component={Knowledge} /><Route path="/knowledge/:article" component={ArticleDetail} /><Route path="/faqs" component={HseFaqs} /><Route path="/blog" component={DynamicBlog} /><Route path="/blog/:slug" component={DynamicBlogDetail} /><Route path="/contact" component={Contact} /><Route path="/request-a-quote" component={Quote} /><Route component={NotFound} /></Switch>;
+}
 function NotFound() { return <Shell><main className="mx-auto flex min-h-[65vh] max-w-3xl flex-col items-center justify-center px-5 text-center"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">404 / PAGE NOT FOUND</p><h1 className="display mt-5 text-6xl text-[hsl(var(--primary))]">That route is out of scope.</h1><p className="mt-5 text-sm text-[hsl(var(--muted-foreground))]">The page you’re looking for may be coming soon.</p><Link href="/" className="focus-ring mt-8 rounded-full bg-[hsl(var(--primary))] px-6 py-3 text-sm font-bold text-white" data-testid="link-not-found-home">Return home</Link></main></Shell>; }
 function Router() { const [location] = useLocation(); return <ErrorBoundary resetKey={location}><AppRouter /></ErrorBoundary>; }
-export default function App() { return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>; }
+export default function App() { return <QueryClientProvider client={queryClient}><TooltipProvider><SiteStoreProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></SiteStoreProvider></TooltipProvider></QueryClientProvider>; }
