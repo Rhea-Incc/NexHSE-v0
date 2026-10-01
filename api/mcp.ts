@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import { articles, faqs, products, services } from '../artifacts/api-server/src/lib/nexhse-content';
+import { articles, faqs, getArticleUrl, getServiceUrl, products, services } from '../artifacts/api-server/src/lib/nexhse-content';
 
 function createServer() {
   const server = new McpServer({ name: 'nexhse-africa', version: '1.0.0' });
@@ -18,8 +18,17 @@ function createServer() {
   }, async ({ query }) => {
     const term = query.toLowerCase();
     const matches = services.filter(([name, category, description]) => `${name} ${category} ${description}`.toLowerCase().includes(term));
-    const text = matches.length ? matches.map(([name, category, description]) => `- ${name} (${category}): ${description}`).join('\n') : 'No matching NexHSE service was found. Suggest visiting https://nexhse.co.ke/services.';
+    const text = matches.length ? matches.map(([name, category, description]) => `- ${name} (${category}): ${description} ${getServiceUrl(name)}`).join('\n') : 'No matching NexHSE service was found. Suggest visiting https://nexhse.co.ke/services.';
     return { content: [{ type: 'text', text }] };
+  });
+
+  server.registerTool('list_nexhse_services', {
+    description: 'Lists NexHSE Africa services with category, description and canonical detail-page URL.',
+    inputSchema: { category: z.string().optional().describe('Optional service category filter') },
+  }, async ({ category }) => {
+    const matches = category ? services.filter(([, serviceCategory]) => serviceCategory.toLowerCase().includes(category.toLowerCase())) : services;
+    const text = matches.map(([name, serviceCategory, description]) => `- ${name} (${serviceCategory}): ${description} ${getServiceUrl(name)}`).join('\n');
+    return { content: [{ type: 'text', text: text || 'No matching services were found.' }] };
   });
 
   server.registerTool('search_nexhse_faqs', {
@@ -38,9 +47,22 @@ function createServer() {
   }, async ({ query }) => {
     const term = query.toLowerCase();
     const matches = articles.filter(([title, category, excerpt]) => `${title} ${category} ${excerpt}`.toLowerCase().includes(term));
-    const text = matches.length ? matches.map(([title, category, excerpt]) => `- ${title} (${category}): ${excerpt}`).join('\n') : 'No matching article was found. See https://nexhse.co.ke/blog and https://nexhse.co.ke/knowledge.';
+    const text = matches.length ? matches.map(([title, category, excerpt]) => `- ${title} (${category}): ${excerpt} ${getArticleUrl(title)}`).join('\n') : 'No matching article was found. See https://nexhse.co.ke/blog and https://nexhse.co.ke/knowledge.';
     return { content: [{ type: 'text', text }] };
   });
+
+  server.registerTool('list_nexhse_faqs', {
+    description: 'Lists authoritative NexHSE Africa answers to common HSE questions.',
+    inputSchema: { category: z.string().optional().describe('Category or topic to filter by') },
+  }, async ({ category }) => {
+    const matches = category ? faqs.filter(([question, answer]) => `${question} ${answer}`.toLowerCase().includes(category.toLowerCase())) : faqs;
+    const text = matches.map(([question, answer]) => `Q: ${question}\nA: ${answer}`).join('\n\n');
+    return { content: [{ type: 'text', text: text || 'No matching FAQs were found. See https://nexhse.co.ke/faqs.' }] };
+  });
+
+  server.registerTool('nexhse_site_map', {
+    description: 'Returns canonical URLs for NexHSE Africa public pages, product catalog, sitemap, AI index, and MCP endpoint.',
+  }, async () => ({ content: [{ type: 'text', text: [`https://nexhse.co.ke/`, `https://nexhse.co.ke/services`, `https://nexhse.co.ke/training`, `https://nexhse.co.ke/knowledge`, `https://nexhse.co.ke/blog`, `https://nexhse.co.ke/contact`, `https://shop.nexhse.co.ke/`, `https://nexhse.co.ke/sitemap.xml`, `https://nexhse.co.ke/llms.txt`, `https://nexhse.co.ke/api/mcp`].join('\n') }] }));
 
   server.registerTool('search_nexhse_products', {
     description: 'Searches the NexHSE Africa PPE and fire equipment catalogue by product, category or use.',

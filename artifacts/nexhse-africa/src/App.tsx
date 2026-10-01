@@ -157,10 +157,10 @@ function Navbar() {
   const hostname = window.location.hostname.toLowerCase();
   const quoteHref = hostname === 'shop.nexhse.co.ke' || hostname === 'admin.nexhse.co.ke' ? 'https://nexhse.co.ke/request-a-quote' : '/request-a-quote';
   const links = hostname === 'shop.nexhse.co.ke'
-    ? [['Main site', 'https://nexhse.co.ke'], ['Shop', '/'], ['Admin', 'https://admin.nexhse.co.ke']]
+    ? [['Main site', 'https://nexhse.co.ke'], ['Shop', '/']]
     : hostname === 'admin.nexhse.co.ke'
-      ? [['Public site', 'https://nexhse.co.ke'], ['Shop', 'https://shop.nexhse.co.ke'], ['Admin', '/']]
-      : [['About', '/about'], ['Services', '/services'], ['Training', '/training'], ['Shop', 'https://shop.nexhse.co.ke'], ['Admin', 'https://admin.nexhse.co.ke'], ['Knowledge', '/knowledge'], ['Blog', '/blog'], ['Contact', '/contact']];
+      ? [['Public site', 'https://nexhse.co.ke'], ['Shop', 'https://shop.nexhse.co.ke']]
+      : [['About', '/about'], ['Services', '/services'], ['Training', '/training'], ['Shop', 'https://shop.nexhse.co.ke'], ['Knowledge', '/knowledge'], ['Blog', '/blog'], ['Contact', '/contact']];
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: KeyboardEvent) => {
