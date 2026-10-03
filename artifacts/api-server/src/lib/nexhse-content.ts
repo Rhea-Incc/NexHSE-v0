@@ -25,6 +25,32 @@ export const services = [
   ['Effluent & Emissions Management', 'Environmental Management', 'Discharge control planning and monitoring for liquid and airborne emissions.'],
 ] as const;
 
+const serviceSlugOverrides: Record<string, string> = {
+  'Training on Alcohol & Drug Abuse': 'alcohol-drug-abuse-training',
+  'Development of OSH Policies': 'osh-policies',
+  'Environmental Education (Training)': 'environmental-education-training',
+  'Work at Height & Confined Space Training': 'work-at-height-confined-space-training',
+  'Health & Safety Audits': 'health-safety-audits',
+  'Fire Safety Inspections & Audits': 'fire-safety-inspections-audits',
+  'Chemical & Mechanical Safety': 'chemical-mechanical-safety',
+  'Construction Site Safety Management & Monitoring': 'construction-site-safety-management-monitoring',
+  'Environmental Policies & Management Plans': 'environmental-policies-management-plans',
+  'Effluent & Emissions Management': 'effluent-emissions-management',
+};
+
+function contentSlug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+export function getServiceUrl(name: string) {
+  const slug = serviceSlugOverrides[name] ?? contentSlug(name);
+  return `https://nexhse.co.ke/services/${slug}`;
+}
+
+export function getArticleUrl(title: string) {
+  return `https://nexhse.co.ke/blog/${contentSlug(title)}`;
+}
+
 export const faqs = [
   ['How does NexHSE begin an engagement?', 'We start by understanding your organisation, operating context and the practical concern you need to solve.'],
   ['Can training be delivered at our workplace?', 'Delivery format is shaped around the programme and your organisation.'],
