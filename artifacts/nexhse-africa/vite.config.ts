@@ -49,8 +49,21 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, '..', '..', 'dist'),
+    outDir: path.resolve(import.meta.dirname, 'dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('/node_modules/')) return;
+          if (/\/(react|react-dom|scheduler)\//.test(id)) return 'framework';
+          if (id.includes('/@radix-ui/')) return 'radix-ui';
+          if (id.includes('/lucide-react/')) return 'icons';
+          if (id.includes('/react-icons/')) return 'social-icons';
+          if (id.includes('/@tanstack/')) return 'query';
+          if (id.includes('/wouter/')) return 'router';
+        },
+      },
+    },
   },
   server: {
     port,

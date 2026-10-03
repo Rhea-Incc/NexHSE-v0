@@ -1,9 +1,13 @@
 {
-  "buildCommand": "pnpm --filter @workspace/nexhse-africa run build",
-  "outputDirectory": "dist",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "artifacts/nexhse-africa/dist",
   "framework": "vite",
   "env": {
     "PORT": "5000",
     "BASE_PATH": "/"
-  }
+  },
+  "rewrites": [
+    { "source": "/robots.txt", "has": [{ "type": "host", "value": "admin.nexhse.co.ke" }], "destination": "/admin-robots.txt" },
+    { "source": "/((?!assets/|api/|robots.txt|sitemap.xml|llms.txt|site.webmanifest|storage-bridge.html|favicon.svg|logo.png).*)", "destination": "/index.html" }
+  ]
 }
