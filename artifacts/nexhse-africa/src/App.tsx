@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { ArrowUpRight, Award, BriefcaseBusiness, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock3, Download, FileText, Flame, HardHat, HeartPulse, Leaf, Mail, MapPin, Phone, Search, ShieldCheck, Siren, Sparkles, Target, Users } from 'lucide-react';
+import { ArrowUpRight, Award, BriefcaseBusiness, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock3, Download, FileText, Flame, HardHat, HeartPulse, Leaf, Mail, MapPin, Phone, Search, ShieldCheck, ShoppingCart, Siren, Sparkles, Target, Users } from 'lucide-react';
 import { FaFacebookF, FaGoogle, FaLinkedinIn, FaTiktok } from 'react-icons/fa6';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
 const heroImage = '/assets/image-36_1787989938472-CuZj7f29.jpg';
@@ -37,11 +37,12 @@ const socialLinks = [
 ];
 
 type IconType = typeof ShieldCheck;
-type Service = { slug: string; number: string; title: string; short: string; outcome: string; type: 'Training & Capacity Building' | 'Assessments, Audits & Policy' | 'Specialised Services' | 'Equipment Supply' | 'Environmental Management'; icon: IconType; image: string; group: string; };
+type Service = { id?: string; slug: string; number: string; title: string; short: string; outcome: string; type: string; icon: IconType; image: string; group: string; active?: boolean };
 type FAQ = { q: string; a: string };
-type ShopProduct = { name: string; category: string; price: number; image: string; imageBackground: string; description: string; longDescription: string; seoTitle: string; seoDescription: string; keywords: string[]; features: string[]; useCases: string[]; brand: string; condition: string; stock: number };
+type ShopProduct = { id?: string; sku?: string; name: string; category: string; price: number; basePrice?: number; promotionName?: string | null; promotionCode?: string | null; image: string; imageBackground: string; description: string; longDescription: string; seoTitle: string; seoDescription: string; keywords: string[]; features: string[]; useCases: string[]; brand: string; condition: string; stock: number; active?: boolean };
+type ShopPromotion = { id: string; code: string; name: string; description: string; discountType: 'percentage' | 'fixed'; discountValue: number; productIds: string[]; startsAt: string | null; endsAt: string | null; usageLimit: number | null; usageCount: number; active: boolean };
 type DeliveryDetails = { name: string; email: string; phone: string; address: string; county: string; notes: string };
-type ShopOrder = { id: string; createdAt: string; items: { name: string; quantity: number; price: number; image: string }[]; subtotal: number; deliveryFee: number; total: number; delivery: DeliveryDetails; paymentMethod: 'M-Pesa' | 'Card' | 'Bank transfer' | 'Pay on delivery'; paymentStatus: 'pending' | 'awaiting confirmation' | 'paid' | 'failed'; orderStatus: 'received' | 'processing' | 'ready for dispatch' | 'dispatched' | 'completed' };
+type ShopOrder = { id: string; createdAt: string; items: { name: string; quantity: number; price: number; image: string }[]; subtotal: number; deliveryFee: number; total: number; delivery: DeliveryDetails; paymentMethod: 'M-Pesa' | 'Card' | 'Bank transfer' | 'Pay on delivery'; paymentStatus: 'pending' | 'awaiting confirmation' | 'paid' | 'failed' | 'refunded'; orderStatus: 'received' | 'processing' | 'ready for dispatch' | 'dispatched' | 'completed' | 'cancelled'; trackingNumber?: string | null; carrier?: string | null; expectedDeliveryAt?: string | null };
 type ServiceTicket = { id: string; name: string; email: string; subject: string; priority: 'normal' | 'urgent'; details: string; status: 'open' | 'in progress' | 'resolved'; createdAt: string };
 
 const legacyServiceSlugs: Record<string, string> = {
@@ -55,31 +56,31 @@ function resolveServiceSlug(slug: string) {
   return legacyServiceSlugs[slug] ?? slug;
 }
 
-const services: Service[] = [
-  { slug: 'osh-training', number: '01', title: 'OSH Training', short: 'Builds core hazard awareness and legal compliance org-wide.', outcome: 'Your workforce spots and stops hazards before they become incidents.', type: 'Training & Capacity Building', icon: Users, image: trainingImage, group: 'Training' },
-  { slug: 'fire-safety-training', number: '02', title: 'Fire Safety Training', short: 'Prevention, response and evacuation skills, including fire marshals.', outcome: "Your building passes fire inspections and your team does not freeze in a real fire.", type: 'Training & Capacity Building', icon: Flame, image: fireImage, group: 'Training' },
-  { slug: 'first-aid-training', number: '03', title: 'First Aid Training', short: 'Certified first aider and refresher training aligned to the 2024 Regulations.', outcome: 'A trained responder is on-site the moment an injury happens.', type: 'Training & Capacity Building', icon: HeartPulse, image: firstAidImage, group: 'Training' },
-  { slug: 'work-at-height-confined-space-training', number: '04', title: 'Work at Height & Confined Space Training', short: 'Specialised competence for high-risk access, fall protection and entry.', outcome: 'High-risk tasks are done only by people actually qualified to do them.', type: 'Training & Capacity Building', icon: HardHat, image: heightsImage, group: 'Training' },
-  { slug: 'emergency-response-training', number: '05', title: 'Emergency Response Training', short: 'Builds organisational readiness to respond to workplace emergencies.', outcome: 'Your team reacts fast and correctly, not in panic, when something goes wrong.', type: 'Training & Capacity Building', icon: Siren, image: constructionTrainingImage, group: 'Training' },
-  { slug: 'alcohol-drug-abuse-training', number: '06', title: 'Training on Alcohol & Drug Abuse', short: 'Awareness training and workplace policy support for substance-related risk.', outcome: 'Substance-related incidents get prevented, not just punished after the fact.', type: 'Training & Capacity Building', icon: ShieldCheck, image: trainingRoomImage, group: 'Training' },
-  { slug: 'ppe-training', number: '07', title: 'PPE Training', short: 'Correct selection, fitting and use of personal protective equipment.', outcome: 'PPE actually protects because it is worn and used correctly.', type: 'Training & Capacity Building', icon: ShieldCheck, image: siteTrainingImage, group: 'Training' },
-  { slug: 'risk-assessments', number: '08', title: 'Risk Assessments', short: 'Identifies and controls workplace hazards before they cause harm.', outcome: 'You know your real exposure before an incident forces you to find out.', type: 'Assessments, Audits & Policy', icon: Target, image: riskReviewImage, group: 'Assess' },
-  { slug: 'health-safety-audits', number: '09', title: 'Health & Safety Audits', short: 'Independent verification against statutory and ISO 45001 standards.', outcome: 'You walk into any inspection or lender review with evidence, not excuses.', type: 'Assessments, Audits & Policy', icon: ClipboardCheck, image: auditMeetingImage, group: 'Assess' },
-  { slug: 'fire-safety-inspections-audits', number: '10', title: 'Fire Safety Inspections & Audits', short: 'Verifies fire controls against the Fire Risk Reduction Rules, 2007.', outcome: 'No surprises when the fire inspector shows up.', type: 'Assessments, Audits & Policy', icon: Flame, image: fireImage, group: 'Assess' },
-  { slug: 'osh-policies', number: '11', title: 'Development of OSH Policies', short: 'Tailored policy frameworks built for your operation.', outcome: 'A safety management system that actually functions, not a binder on a shelf.', type: 'Assessments, Audits & Policy', icon: ClipboardCheck, image: auditMeetingImage, group: 'Policy' },
-  { slug: 'asbestos-containing-materials-surveys', number: '12', title: 'Asbestos Containing Materials (ACM) Surveys', short: 'Identification and risk management of legacy asbestos hazards.', outcome: 'You know where the risk is before it becomes a lawsuit or a stalled demolition.', type: 'Assessments, Audits & Policy', icon: Search, image: fieldImage, group: 'Assess' },
-  { slug: 'chemical-mechanical-safety', number: '13', title: 'Chemical & Mechanical Safety', short: 'Safe handling, storage and operation around hazards and machinery.', outcome: 'Fewer chemical-exposure and machinery incidents on your site.', type: 'Specialised Services', icon: ShieldCheck, image: constructionTrainingImage, group: 'Specialised' },
-  { slug: 'disaster-preparedness-management', number: '14', title: 'Disaster Preparedness & Management', short: 'Structured planning and readiness for large-scale or catastrophic events.', outcome: 'Your organisation has a plan before the crisis, not during it.', type: 'Specialised Services', icon: Siren, image: fieldImage, group: 'Specialised' },
-  { slug: 'construction-site-safety-management-monitoring', number: '15', title: 'Construction Site Safety Management & Monitoring', short: 'On-site HSE oversight and supervision through the project lifecycle.', outcome: 'Continuous safety coverage without hiring a full-time HSE officer.', type: 'Specialised Services', icon: HardHat, image: siteTrainingImage, group: 'Specialised' },
-  { slug: 'firefighting-equipment-supply-maintenance', number: '16', title: 'Firefighting Equipment Supply & Maintenance', short: 'Reliable, inspected firefighting equipment supply and upkeep.', outcome: 'Equipment works the one time it actually matters.', type: 'Equipment Supply', icon: Flame, image: fireImage, group: 'Equipment' },
-  { slug: 'ppe-supply', number: '17', title: 'PPE Supply', short: 'Quality PPE supplied alongside the training to use it correctly.', outcome: 'Staff are equipped and know how to use exactly what they are given.', type: 'Equipment Supply', icon: ShieldCheck, image: harnessImage, group: 'Equipment' },
-  { slug: 'first-aid-appliances-supply', number: '18', title: 'First Aid Appliances Supply', short: 'Fully stocked, compliant first aid kits and station equipment.', outcome: 'First aid resources are ready when people need them.', type: 'Equipment Supply', icon: HeartPulse, image: firstAidImage, group: 'Equipment' },
-  { slug: 'environmental-impact-assessment-audits', number: '19', title: 'Environmental Impact Assessment & Audits', short: 'Assesses and verifies environmental compliance and impact management.', outcome: 'Environmental risk is understood, documented and managed.', type: 'Environmental Management', icon: Leaf, image: environmentalImage, group: 'Environment' },
-  { slug: 'environmental-education-training', number: '20', title: 'Environmental Education (Training)', short: 'Builds practical environmental awareness for teams and operations.', outcome: 'People understand how daily work affects environmental performance.', type: 'Environmental Management', icon: Leaf, image: fieldImage, group: 'Environment' },
-  { slug: 'environmental-policies-management-plans', number: '21', title: 'Environmental Policies & Management Plans', short: 'Provides consistent environmental practice, not ad hoc decisions per site.', outcome: 'Environmental responsibilities are clear and applied consistently.', type: 'Environmental Management', icon: Leaf, image: environmentalImage, group: 'Environment' },
-  { slug: 'environmental-management-systems', number: '22', title: 'Environmental Management Systems', short: 'Systems-based approach to continual environmental improvement.', outcome: 'Environmental performance improves year over year, not just once.', type: 'Environmental Management', icon: Leaf, image: fieldImage, group: 'Environment' },
-  { slug: 'waste-management', number: '23', title: 'Waste Management', short: 'Safe, compliant handling, storage and disposal of waste streams.', outcome: 'Waste is controlled from generation through compliant disposal.', type: 'Environmental Management', icon: Leaf, image: environmentalImage, group: 'Environment' },
-  { slug: 'effluent-emissions-management', number: '24', title: 'Effluent & Emissions Management', short: 'Discharge control planning and monitoring for liquid and airborne emissions.', outcome: 'Emissions stay within legal limits, verifiably.', type: 'Environmental Management', icon: Leaf, image: environmentalImage, group: 'Environment' },
+export const services: Service[] = [
+  { slug: 'osh-training', number: '01', title: 'OSH Training', short: 'Builds core hazard awareness and legal compliance org-wide.', outcome: 'Your workforce spots and stops hazards before they become incidents.', type: 'OSH — TRAINING & CAPACITY BUILDING', icon: Users, image: trainingImage, group: 'Training' },
+  { slug: 'fire-safety-training', number: '02', title: 'Fire Safety Training', short: 'Prevention, response and evacuation skills, including fire marshals.', outcome: "Your building passes fire inspections — and your team doesn't freeze in a real fire.", type: 'OSH — TRAINING & CAPACITY BUILDING', icon: Flame, image: fireImage, group: 'Training' },
+  { slug: 'first-aid-training', number: '03', title: 'First Aid Training', short: 'Certified first aider and refresher training aligned to the 2024 Regulations.', outcome: 'A trained responder is on-site the moment an injury happens.', type: 'OSH — TRAINING & CAPACITY BUILDING', icon: HeartPulse, image: firstAidImage, group: 'Training' },
+  { slug: 'work-at-height-confined-space-training', number: '04', title: 'Work at Height & Confined Space Training', short: 'Specialised competence for high-risk access, fall protection and entry.', outcome: 'High-risk tasks are done only by people actually qualified to do them.', type: 'OSH — TRAINING & CAPACITY BUILDING', icon: HardHat, image: heightsImage, group: 'Training' },
+  { slug: 'emergency-response-training', number: '05', title: 'Emergency Response Training', short: 'Builds organisational readiness to respond to workplace emergencies.', outcome: 'Your team reacts fast and correctly — not in panic — when something goes wrong.', type: 'OSH — TRAINING & CAPACITY BUILDING', icon: Siren, image: constructionTrainingImage, group: 'Training' },
+  { slug: 'alcohol-drug-abuse-training', number: '06', title: 'Training on Alcohol & Drug', short: 'Awareness training and workplace policy support for substance-related risk.', outcome: 'Substance-related incidents get prevented, not just punished after the fact.', type: 'OSH — TRAINING & CAPACITY BUILDING', icon: ShieldCheck, image: trainingRoomImage, group: 'Training' },
+  { slug: 'ppe-training', number: '07', title: 'PPE Training', short: 'Correct selection, fitting and use of personal protective equipment.', outcome: "PPE actually protects — because it's worn and used correctly.", type: 'OSH — TRAINING & CAPACITY BUILDING', icon: ShieldCheck, image: siteTrainingImage, group: 'Training' },
+  { slug: 'risk-assessments', number: '08', title: 'Risk Assessments', short: 'Identifies and controls workplace hazards before they cause harm.', outcome: 'You know your real exposure before an incident forces you to find out.', type: 'ASSESSMENTS, AUDITS & POLICY', icon: Target, image: riskReviewImage, group: 'Assess' },
+  { slug: 'health-safety-audits', number: '09', title: 'Health & Safety Audits', short: 'Independent verification against statutory and ISO 45001 standards.', outcome: 'You walk into any inspection or lender review with evidence, not excuses.', type: 'ASSESSMENTS, AUDITS & POLICY', icon: ClipboardCheck, image: auditMeetingImage, group: 'Assess' },
+  { slug: 'fire-safety-inspections-audits', number: '10', title: 'Fire Safety Inspections & Audits', short: 'Verifies fire controls against the Fire Risk Reduction Rules, 2007.', outcome: 'No surprises when the fire inspector shows up.', type: 'ASSESSMENTS, AUDITS & POLICY', icon: Flame, image: fireImage, group: 'Assess' },
+  { slug: 'osh-policies', number: '11', title: 'Development of OSH Policies', short: 'Tailored policy frameworks built for your operation.', outcome: 'A safety management system that actually functions — not a binder on a shelf.', type: 'ASSESSMENTS, AUDITS & POLICY', icon: ClipboardCheck, image: auditMeetingImage, group: 'Policy' },
+  { slug: 'asbestos-containing-materials-surveys', number: '12', title: 'Asbestos Containing Materials (ACM) Surveys', short: 'Identification and risk management of legacy asbestos hazards.', outcome: 'You know where the risk is before it becomes a lawsuit or a stalled demolition.', type: 'ASSESSMENTS, AUDITS & POLICY', icon: Search, image: fieldImage, group: 'Assess' },
+  { slug: 'chemical-mechanical-safety', number: '13', title: 'Chemical & Mechanical Safety', short: 'Safe handling, storage and operation around hazards and machinery.', outcome: 'Fewer chemical-exposure and machinery incidents on your site.', type: 'SPECIALISED SERVICES', icon: ShieldCheck, image: constructionTrainingImage, group: 'Specialised' },
+  { slug: 'disaster-preparedness-management', number: '14', title: 'Disaster Preparedness & Management', short: 'Structured planning and readiness for large-scale or catastrophic events.', outcome: 'Your organisation has a plan before the crisis, not during it.', type: 'SPECIALISED SERVICES', icon: Siren, image: fieldImage, group: 'Specialised' },
+  { slug: 'construction-site-safety-management-monitoring', number: '15', title: 'Construction Site Safety Management & Monitoring', short: 'On-site HSE oversight and supervision through the project lifecycle.', outcome: 'Continuous safety coverage without hiring a full-time HSE officer.', type: 'SPECIALISED SERVICES', icon: HardHat, image: siteTrainingImage, group: 'Specialised' },
+  { slug: 'firefighting-equipment-supply-maintenance', number: '16', title: 'Firefighting Equipment Supply & Maintenance', short: 'Reliable, inspected firefighting equipment supply and upkeep.', outcome: 'Equipment works the one time it actually matters.', type: 'EQUIPMENT SUPPLY', icon: Flame, image: fireImage, group: 'Equipment' },
+  { slug: 'ppe-supply', number: '17', title: 'PPE Supply', short: 'Quality PPE supplied alongside the training to use it correctly.', outcome: "Staff are equipped and know how to use exactly what they're given.", type: 'EQUIPMENT SUPPLY', icon: ShieldCheck, image: harnessImage, group: 'Equipment' },
+  { slug: 'first-aid-appliances-supply', number: '18', title: 'First Aid Appliances Supply', short: 'Fully stocked, compliant first aid kits and station equipment.', outcome: "No excuse for an empty first aid box when it's needed most.", type: 'EQUIPMENT SUPPLY', icon: HeartPulse, image: firstAidImage, group: 'Equipment' },
+  { slug: 'environmental-impact-assessment-audits', number: '19', title: 'Environmental Impact Assessment & Audits', short: 'Assesses and verifies environmental compliance and impact management.', outcome: 'Your project clears NEMA approval without a redesign-and-resubmit cycle.', type: 'ENVIRONMENTAL MANAGEMENT', icon: Leaf, image: environmentalImage, group: 'Environment' },
+  { slug: 'environmental-education-training', number: '20', title: 'Environmental Education (Training)', short: 'Builds environmental awareness and responsibility across your workforce.', outcome: 'Your team makes environmentally sound decisions without being told twice.', type: 'ENVIRONMENTAL MANAGEMENT', icon: Leaf, image: fieldImage, group: 'Environment' },
+  { slug: 'environmental-policies-management-plans', number: '21', title: 'Environmental Policies & Management Plans', short: 'Structured frameworks that guide consistent environmental performance.', outcome: 'Consistent environmental practice — not ad hoc decisions per site.', type: 'ENVIRONMENTAL MANAGEMENT', icon: Leaf, image: environmentalImage, group: 'Environment' },
+  { slug: 'environmental-management-systems', number: '22', title: 'Environmental Management Systems', short: 'Systems-based approach to continual environmental improvement.', outcome: 'Environmental performance that improves year over year, not just once.', type: 'ENVIRONMENTAL MANAGEMENT', icon: Leaf, image: fieldImage, group: 'Environment' },
+  { slug: 'waste-management', number: '23', title: 'Waste Management', short: 'Safe, compliant handling, storage and disposal of waste streams.', outcome: 'No regulatory exposure from how your waste is handled.', type: 'ENVIRONMENTAL MANAGEMENT', icon: Leaf, image: environmentalImage, group: 'Environment' },
+  { slug: 'effluent-emissions-management', number: '24', title: 'Effluent & Emissions Management', short: 'Discharge control planning and monitoring for liquid and airborne emissions.', outcome: 'Emissions stay within legal limits — verifiably.', type: 'ENVIRONMENTAL MANAGEMENT', icon: Leaf, image: environmentalImage, group: 'Environment' },
 ];
 
 const faqs: FAQ[] = [
@@ -254,7 +255,7 @@ function FooterSlideshow() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setCurrent(index => (index + 1) % heroSlides.length);
-    }, 8500);
+    }, 7000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -271,7 +272,7 @@ function MobileNavSlideshow() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setCurrent(index => (index + 1) % heroSlides.length);
-    }, 5200);
+    }, 7000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -291,9 +292,38 @@ function FooterList({ title, links }: { title: string; links: string[][] }) {
   return <div><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">{title}</p><div className="mt-5 space-y-3">{links.map(([label, href]) => { const target = resolveHref(href); const className = 'focus-ring block w-fit text-sm text-white/70 transition-colors hover:text-white'; return target.startsWith('https://') ? <a href={target} key={href} className={className} data-testid={`link-footer-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</a> : <Link href={target} key={href} className={className} data-testid={`link-footer-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>; })}</div></div>;
 }
 
-function AdminOrderPanel() {
+function LegacyAdminOrderPanel() {
   const { orders, updateOrder } = useShopOrders();
   return <section className="mx-auto w-full max-w-7xl border-t border-[hsl(var(--border))] px-5 py-12 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Live order queue</p><h2 className="display mt-2 text-3xl text-[hsl(var(--primary))]">Orders and payment rails</h2></div><span className="text-xs text-[hsl(var(--muted-foreground))]">{orders.length} order{orders.length === 1 ? '' : 's'}</span></div>{orders.length ? <div className="mt-6 space-y-3">{orders.map(order => <div key={order.id} className="grid gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 lg:grid-cols-[1.2fr_.7fr_.8fr_.8fr]"><div><p className="font-bold text-[hsl(var(--primary))]">{order.id}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{order.delivery.name} · {order.delivery.county}</p><p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}</p></div><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">Payment</p><p className="mt-2 text-xs font-bold text-[hsl(var(--primary))]">{order.paymentMethod}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{order.paymentStatus}</p></div><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">Total</p><p className="mt-2 font-bold text-[hsl(var(--primary))]">KSh {order.total.toLocaleString()}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{new Date(order.createdAt).toLocaleString()}</p></div><label className="text-xs font-bold text-[hsl(var(--primary))]">Order status<select value={order.orderStatus} onChange={event => updateOrder(order.id, { orderStatus: event.target.value as ShopOrder['orderStatus'] })} className="focus-ring mt-2 min-h-10 w-full rounded-xl border border-[hsl(var(--border))] bg-white px-2 text-xs outline-none" data-testid={`select-admin-order-status-${order.id}`}><option>received</option><option>processing</option><option>ready for dispatch</option><option>dispatched</option><option>completed</option></select></label></div>)}</div> : <p className="mt-6 rounded-2xl border border-dashed border-[hsl(var(--border))] p-8 text-sm text-[hsl(var(--muted-foreground))]">No orders have been placed yet. New checkout submissions will appear here automatically.</p>}</section>;
+}
+
+function AdminOrderPanel() {
+  const { orders, updateOrder } = useShopOrders();
+  const [selectedId, setSelectedId] = useState('');
+  const [events, setEvents] = useState<{ id: string; eventType: string; status: string; note: string; trackingNumber?: string | null; carrier?: string | null; createdAt: string }[]>([]);
+  const [tracking, setTracking] = useState<Record<string, { carrier: string; trackingNumber: string; expectedDeliveryAt: string }>>({});
+  const [followups, setFollowups] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  useEffect(() => {
+    if (!selectedId) return;
+    void fetch(`/api/admin-data?resource=orders&id=${encodeURIComponent(selectedId)}`, { credentials: 'same-origin', cache: 'no-store' }).then(response => response.json()).then(result => setEvents(Array.isArray(result.events) ? result.events : [])).catch(() => setEvents([]));
+  }, [selectedId, orders]);
+  const saveTracking = (order: ShopOrder) => {
+    const details = tracking[order.id] ?? { carrier: order.carrier ?? '', trackingNumber: order.trackingNumber ?? '', expectedDeliveryAt: order.expectedDeliveryAt ?? '' };
+    updateOrder(order.id, details);
+    setError('');
+  };
+  const logFollowup = (order: ShopOrder) => {
+    const note = followups[order.id]?.trim();
+    if (!note) return;
+    updateOrder(order.id, { note });
+    setFollowups(current => ({ ...current, [order.id]: '' }));
+    setSelectedId(order.id);
+  };
+  return <section className="mx-auto w-full max-w-7xl border-t border-[hsl(var(--border))] px-5 py-12 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Live order queue</p><h2 className="display mt-2 text-3xl text-[hsl(var(--primary))]">Orders, tracking and follow-up</h2></div><span className="text-xs text-[hsl(var(--muted-foreground))]">{orders.length} order{orders.length === 1 ? '' : 's'}</span></div>{orders.length ? <div className="mt-6 space-y-4">{orders.map(order => {
+    const details = tracking[order.id] ?? { carrier: order.carrier ?? '', trackingNumber: order.trackingNumber ?? '', expectedDeliveryAt: order.expectedDeliveryAt?.slice(0, 10) ?? '' };
+    return <article key={order.id} className="border-t border-[hsl(var(--border))] py-5"><div className="grid gap-5 xl:grid-cols-[1fr_.8fr_1.2fr]"><div><p className="font-bold text-[hsl(var(--primary))]">{order.id} · {order.delivery.name}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{order.delivery.email} · {order.delivery.phone}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{order.delivery.address}, {order.delivery.county}</p><p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">{order.items.map(item => `${item.name} x${item.quantity}`).join(', ')}</p><p className="mt-3 text-sm font-bold text-[hsl(var(--primary))]">KSh {order.total.toLocaleString()} · {new Date(order.createdAt).toLocaleString()}</p><a href={`mailto:${encodeURIComponent(order.delivery.email)}?subject=${encodeURIComponent(`NexHSE order ${order.id}`)}`} className="focus-ring mt-3 inline-flex text-xs font-bold text-[hsl(var(--accent))]">Email customer follow-up</a></div><div className="grid content-start gap-3"><label className="text-xs font-bold">Fulfilment status<select value={order.orderStatus} onChange={event => updateOrder(order.id, { orderStatus: event.target.value as ShopOrder['orderStatus'] })} className="focus-ring mt-1 min-h-10 w-full rounded-lg border border-[hsl(var(--border))] bg-white px-2 text-xs"><option value="received">Received</option><option value="processing">Processing</option><option value="ready for dispatch">Ready for dispatch</option><option value="dispatched">Dispatched</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><label className="text-xs font-bold">Payment status<select value={order.paymentStatus} onChange={event => updateOrder(order.id, { paymentStatus: event.target.value as ShopOrder['paymentStatus'] })} className="focus-ring mt-1 min-h-10 w-full rounded-lg border border-[hsl(var(--border))] bg-white px-2 text-xs"><option value="pending">Pending</option><option value="awaiting confirmation">Awaiting confirmation</option><option value="paid">Paid</option><option value="failed">Failed</option><option value="refunded">Refunded</option></select></label></div><div><div className="grid gap-3 sm:grid-cols-3"><label className="text-xs font-bold">Carrier<input value={details.carrier} onChange={event => setTracking(current => ({ ...current, [order.id]: { ...details, carrier: event.target.value } }))} className="focus-ring mt-1 min-h-10 w-full rounded-lg border border-[hsl(var(--border))] px-2 text-xs" /></label><label className="text-xs font-bold">Tracking number<input value={details.trackingNumber} onChange={event => setTracking(current => ({ ...current, [order.id]: { ...details, trackingNumber: event.target.value } }))} className="focus-ring mt-1 min-h-10 w-full rounded-lg border border-[hsl(var(--border))] px-2 text-xs" /></label><label className="text-xs font-bold">Expected delivery<input type="date" value={details.expectedDeliveryAt} onChange={event => setTracking(current => ({ ...current, [order.id]: { ...details, expectedDeliveryAt: event.target.value } }))} className="focus-ring mt-1 min-h-10 w-full rounded-lg border border-[hsl(var(--border))] px-2 text-xs" /></label></div><button type="button" onClick={() => saveTracking(order)} className="focus-ring mt-3 min-h-9 rounded-lg border border-[hsl(var(--border))] px-3 text-xs font-bold">Save tracking details</button><label className="mt-4 block text-xs font-bold">Log a customer follow-up<textarea value={followups[order.id] ?? ''} onChange={event => setFollowups(current => ({ ...current, [order.id]: event.target.value }))} className="focus-ring mt-1 min-h-16 w-full rounded-lg border border-[hsl(var(--border))] p-2 text-xs" /></label><button type="button" onClick={() => logFollowup(order)} className="focus-ring mt-2 min-h-9 rounded-lg bg-[hsl(var(--primary))] px-3 text-xs font-bold text-white">Record follow-up</button>{selectedId === order.id && events.length > 0 && <div className="mt-4 border-l border-[hsl(var(--border))] pl-3">{events.slice().reverse().map(event => <p key={event.id} className="mb-2 text-xs text-[hsl(var(--muted-foreground))]">{new Date(event.createdAt).toLocaleString()} · {event.status}{event.note ? ` · ${event.note}` : ''}</p>)}</div>}</div></div></article>;
+  })}</div> : <p className="mt-6 text-sm text-[hsl(var(--muted-foreground))]">No orders have been recorded yet.</p>}{error && <p role="alert" className="mt-3 text-sm text-[hsl(var(--destructive))]">{error}</p>}</section>;
 }
 
 function SiteStoreProvider({ children }: { children: ReactNode }) {
@@ -427,18 +457,70 @@ function Shell({ children }: { children: ReactNode }) {
 function AdminWorkspaceNavigation() {
   const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
   const base = isAdminHost ? '' : '/admin';
-  const links = [['Overview', base || '/'], ['Orders', `${base}/orders`], ['Customers', `${base}/customers`], ['Service desk', `${base}/service`], ['Products', `${base}/products`], ['Blog', `${base}/blog`]];
+  const [isOwner, setIsOwner] = useState(false);
+  useEffect(() => { void fetch('/api/admin-session', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.json()).then(result => setIsOwner(result.user?.role === 'owner')).catch(() => undefined); }, []);
+  const allLinks = [['Overview', base || '/'], ['Orders', `${base}/orders`], ['Customers', `${base}/customers`], ['Service desk', `${base}/service`], ['Products', `${base}/products`], ['Promotions', `${base}/promotions`], ['Services', `${base}/services`], ['Team access', `${base}/users`], ['Blog', `${base}/blog`]];
+  const links = isOwner ? allLinks : allLinks.filter(([label]) => ['Overview', 'Orders', 'Customers', 'Service desk'].includes(label));
   const signOut = async () => { await fetch('/api/admin-session', { method: 'DELETE', credentials: 'same-origin' }); window.location.reload(); };
   return <nav className="admin-workspace-nav" aria-label="Admin workspace">{links.map(([label, href]) => <Link key={label} href={href} className="focus-ring" data-testid={`link-admin-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>)}<button type="button" onClick={() => void signOut()} className="focus-ring ml-auto" data-testid="button-admin-sign-out">Sign out</button></nav>;
 }
 
 function CartDock() {
-  const { cart } = useShopCart();
+  const { cart, addToCart, removeFromCart, clearCart } = useShopCart();
   const { products } = useShopProducts();
+  const [open, setOpen] = useState(false);
   const count = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
   if (!count) return null;
-  const total = products.reduce((sum, product) => sum + product.price * (cart[product.name] ?? 0), 0);
-  return <Link href={checkoutHref()} className="cart-dock focus-ring" data-testid="link-cart-dock"><span><span className="mono-label text-[9px] text-[hsl(var(--secondary))]">Your cart</span><strong>{count} item{count === 1 ? '' : 's'}</strong></span><span>KSh {total.toLocaleString()} <ArrowUpRight size={15} /></span></Link>;
+
+  const items = products.filter(product => cart[product.name]).map(product => ({
+    ...product,
+    quantity: cart[product.name] ?? 0,
+    lineTotal: product.price * (cart[product.name] ?? 0),
+  }));
+  const total = items.reduce((sum, item) => sum + item.lineTotal, 0);
+
+  return <div className={`cart-dock ${open ? 'cart-dock--open' : ''}`} data-testid="link-cart-dock">
+    <button type="button" onClick={() => setOpen(current => !current)} className="cart-dock-toggle focus-ring" aria-expanded={open} aria-label={open ? 'Collapse cart details' : 'Expand cart details'}>
+      <span className="cart-dock-summary">
+        <span className="cart-dock-header mono-label text-[9px] text-[hsl(var(--secondary))]">Your cart</span>
+        <strong>{count} item{count === 1 ? '' : 's'}</strong>
+      </span>
+      <span className="cart-dock-total"><ShoppingCart size={15} /> KSh {total.toLocaleString()} <ChevronDown size={14} className={open ? 'rotate-180' : ''} /></span>
+    </button>
+
+    {open && <div className="cart-dock-panel">
+      <div className="cart-dock-panel-header">
+        <p className="mono-label text-[9px] text-[hsl(var(--accent))]">Order details</p>
+        {items.length > 1 && <button type="button" onClick={clearCart} className="focus-ring cart-dock-clear" data-testid="button-cart-clear">Clear all</button>}
+      </div>
+
+      <div className="cart-dock-items">
+        {items.map(item => <div key={item.name} className="cart-dock-item">
+          <div className="cart-dock-item-meta">
+            <img src={item.image} alt={item.name} />
+            <div>
+              <p>{item.name}</p>
+              <span>KSh {item.price.toLocaleString()} each</span>
+            </div>
+          </div>
+          <div className="cart-dock-item-controls">
+            <button type="button" onClick={() => removeFromCart(item.name)} className="focus-ring" aria-label={`Remove one ${item.name}`} data-testid={`button-cart-remove-${item.name.toLowerCase().replaceAll(' ', '-')}`}>−</button>
+            <span>{item.quantity}</span>
+            <button type="button" onClick={() => addToCart(item.name)} className="focus-ring" aria-label={`Add one ${item.name}`} data-testid={`button-cart-add-${item.name.toLowerCase().replaceAll(' ', '-')}`}>+</button>
+          </div>
+          <strong>KSh {item.lineTotal.toLocaleString()}</strong>
+        </div>)}
+      </div>
+
+      <div className="cart-dock-footer">
+        <div>
+          <span className="mono-label text-[9px] text-[hsl(var(--muted-foreground))]">Subtotal</span>
+          <strong>KSh {total.toLocaleString()}</strong>
+        </div>
+        <Link href={checkoutHref()} className="focus-ring cart-dock-checkout" data-testid="link-cart-checkout" onClick={() => setOpen(false)}>Checkout <ArrowUpRight size={15} /></Link>
+      </div>
+    </div>}
+  </div>;
 }
 
 function CursorAtmosphere() {
@@ -504,7 +586,7 @@ function HeroSlideshow() {
 
   useEffect(() => {
     if (paused || reducedMotion) return;
-    const timer = window.setInterval(() => setCurrent(index => (index + 1) % heroSlides.length), 6200);
+    const timer = window.setInterval(() => setCurrent(index => (index + 1) % heroSlides.length), 7000);
     return () => window.clearInterval(timer);
   }, [paused, reducedMotion]);
 
@@ -572,8 +654,8 @@ function PageHeroSlideshow({ image, alt }: { image: string; alt: string }) {
   return <div className={`page-hero-slideshow page-hero-slideshow--${current}`} aria-live="polite"><div className="page-hero-slideshow-outline" aria-hidden="true" />{slides.map((slide, index) => <img key={`${slide.image}-${index}`} src={slide.image} alt={index === current ? slide.alt : ''} aria-hidden={index !== current} className={`page-hero-slide ${index === current ? 'is-active' : ''}`} />)}<div className="page-hero-slideshow-dots" aria-hidden="true">{slides.map((slide, index) => <span key={slide.image} className={index === current ? 'is-active' : ''} />)}</div></div>;
 }
 
-function PageIntro({ eyebrow, title, text, image }: { eyebrow: string; title: string; text: string; image?: string }) {
-  return <><section className="relative overflow-hidden bg-[hsl(var(--primary))] text-white"><OrganicBackdrop dark /><div className="relative mx-auto grid max-w-7xl items-end gap-10 px-5 pb-16 pt-14 lg:grid-cols-[1fr_1fr] lg:px-8 lg:pb-20 lg:pt-20"><div className="reveal"><p className="mono-label mb-5 text-[10px] text-[hsl(var(--secondary))]">{eyebrow}</p><h1 className="display max-w-3xl text-5xl leading-[1.02] tracking-[-.045em] sm:text-6xl">{title}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{text}</p></div>{image && <PageHeroSlideshow image={image} alt="NexHSE professionals learning and applying workplace safety practice" />}<span className="absolute bottom-5 left-5 mono-label text-[9px] text-white/75 lg:bottom-7 lg:left-auto lg:right-8">FIELD / PRACTICE / PEOPLE</span></div><div className="pointer-events-none absolute -right-24 -top-40 h-96 w-96 rounded-full border border-[hsl(var(--accent)/.3)]" /></section><div className="hero-linework" aria-hidden="true"><span /><span /><span /><i /><i /></div>{eyebrow === 'Contact NexHSE Africa' && <div className="head-office-map-wrap"><HeadOfficeMap /></div>}</>;
+function PageIntro({ eyebrow, title, text, image, hideFieldLabel = eyebrow === 'Safety and Growth' || eyebrow === 'SERVICE PORTFOLIO' }: { eyebrow: string; title: string; text: string; image?: string; hideFieldLabel?: boolean }) {
+  return <><section className="relative overflow-hidden bg-[hsl(var(--primary))] text-white"><OrganicBackdrop dark /><div className="relative mx-auto grid max-w-7xl items-end gap-10 px-5 pb-16 pt-14 lg:grid-cols-[1fr_1fr] lg:px-8 lg:pb-20 lg:pt-20"><div className="reveal"><p className="mono-label mb-5 text-[10px] text-[hsl(var(--secondary))]">{eyebrow}</p><h1 className="display max-w-3xl text-5xl leading-[1.02] tracking-[-.045em] sm:text-6xl">{title}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{text}</p></div>{image && <PageHeroSlideshow image={image} alt="NexHSE professionals learning and applying workplace safety practice" />}{!hideFieldLabel && <span className="absolute bottom-5 left-5 mono-label text-[9px] text-white/75 lg:bottom-7 lg:left-auto lg:right-8">FIELD / PRACTICE / PEOPLE</span>}</div><div className="pointer-events-none absolute -right-24 -top-40 h-96 w-96 rounded-full border border-[hsl(var(--accent)/.3)]" /></section><div className="hero-linework" aria-hidden="true"><span /><span /><span /><i /><i /></div>{eyebrow === 'Contact NexHSE Africa' && <div className="head-office-map-wrap"><HeadOfficeMap /></div>}</>;
 }
 
 const shopHeroSlides = [
@@ -588,7 +670,7 @@ function ShopHero() {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setCurrent(index => (index + 1) % shopHeroSlides.length), 4500);
+    const timer = window.setInterval(() => setCurrent(index => (index + 1) % shopHeroSlides.length), 7000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -628,7 +710,7 @@ function ServiceGallery() {
     { offset: 8, tilt: 4.1, duration: '7s' },
   ];
   useEffect(() => {
-    const timer = window.setInterval(() => setCycle(value => value + 1), 6200);
+    const timer = window.setInterval(() => setCycle(value => value + 1), 7000);
     return () => window.clearInterval(timer);
   }, []);
   return <section className="service-gallery col-span-full mt-12 border-t border-[hsl(var(--border))] pt-16" aria-labelledby="service-gallery-title"><SectionHeader eyebrow="Field gallery" title="The work is practical, visible and people-centred." text="A changing view of the environments and learning moments behind the NexHSE service portfolio." /><div className="service-gallery-grid">{gallerySlots.map((slot, index) => { const [image, label, caption] = galleryPool[(cycle * gallerySlots.length + slot.offset) % galleryPool.length]; return <figure key={`gallery-slot-${index}`} className="service-gallery-item group" style={{ '--gallery-tilt': `${slot.tilt}deg`, '--gallery-speed': slot.duration } as CSSProperties}><div className="service-gallery-frame"><img key={`${image}-${cycle}`} src={image} alt={label} loading={cycle === 0 ? 'eager' : 'lazy'} /><div className="service-gallery-hover" /><div className="service-gallery-label"><span className="mono-label">{label}</span><span className="service-gallery-index">0{index + 1}</span></div></div><figcaption>{caption}</figcaption></figure>; })}</div></section>;
@@ -637,8 +719,8 @@ function ServiceGallery() {
 function ServiceCard({ service, compact = false }: { service: Service; compact?: boolean }) {
   const Icon = service.icon;
   return <><Link href={`/services/${service.slug}`} className={`group focus-ring relative block overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-all duration-300 hover:-translate-y-1 hover:border-[hsl(var(--accent)/.65)] hover:shadow-[0_18px_45px_rgba(20,70,76,.12)] ${compact ? '' : 'min-h-[350px]'}`} data-testid={`card-service-${service.slug}`}>
-    <div className="service-card-image relative h-44 overflow-hidden"><img src={service.image} alt={`${service.title} service`} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.76)] via-[hsl(var(--primary)/.12)] to-transparent" /><span className="absolute bottom-4 left-5 mono-label text-[10px] text-white">{service.group}</span></div>
-    <div className="relative flex min-h-[205px] flex-col p-6"><div className="flex items-start justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--accent))]"><Icon size={19} /></span><span className="mono-label text-[10px] text-[hsl(var(--muted-foreground))]">{service.number}</span></div><div className="pt-6"><p className="text-[10px] font-bold uppercase tracking-widest text-[hsl(var(--accent))]">{service.type}</p><h3 className="mt-2 text-xl font-bold tracking-tight text-[hsl(var(--primary))]">{service.title}</h3><p className="mt-2 max-w-xs text-sm leading-6 text-[hsl(var(--muted-foreground))]">{service.short}</p><span className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]">Explore service <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></span></div></div>
+    <div className="service-card-image relative h-44 overflow-hidden"><img src={service.image} alt={`${service.title} service`} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.76)] via-[hsl(var(--primary)/.12)] to-transparent" /><span className="absolute bottom-4 left-5 mono-label text-[10px] text-white">{service.type}</span></div>
+    <div className="relative flex min-h-[205px] flex-col p-6"><div className="flex items-start justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--accent))]"><Icon size={19} /></span><span className="mono-label text-[10px] text-[hsl(var(--muted-foreground))]">{service.number}</span></div><div className="pt-6"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">SERVICE</p><h3 className="mt-2 text-xl font-bold tracking-tight text-[hsl(var(--primary))]">{service.title}</h3><p className="mono-label mt-5 text-[9px] text-[hsl(var(--accent))]">WHAT IT IS</p><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{service.short}</p><p className="mono-label mt-5 text-[9px] text-[hsl(var(--accent))]">THE OUTCOME</p><p className="mt-2 text-sm leading-6 text-[hsl(var(--primary))]">{service.outcome}</p><span className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]">Explore service <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></span></div></div>
   </Link></>;
 }
 
@@ -646,9 +728,9 @@ function Home() {
   const [solve, setSolve] = useState('I need to reduce workplace risk');
   const recommendations = useMemo(() => {
     if (solve.includes('fire')) return services.filter(s => ['fire-safety-inspections-audits', 'fire-safety-training'].includes(s.slug));
-    if (solve.includes('training')) return services.filter(s => s.type === 'Training & Capacity Building').slice(0, 3);
-    if (solve.includes('environmental')) return services.filter(s => s.type === 'Environmental Management').slice(0, 3);
-    if (solve.includes('audit')) return services.filter(s => s.type === 'Assessments, Audits & Policy').slice(0, 3);
+    if (solve.includes('training')) return services.filter(s => s.type === 'OSH — TRAINING & CAPACITY BUILDING').slice(0, 3);
+    if (solve.includes('environmental')) return services.filter(s => s.type === 'ENVIRONMENTAL MANAGEMENT').slice(0, 3);
+    if (solve.includes('audit')) return services.filter(s => s.type === 'ASSESSMENTS, AUDITS & POLICY').slice(0, 3);
     if (solve.includes('programme')) return services.filter(s => ['risk-assessments', 'osh-training', 'environmental-education-training'].includes(s.slug));
     return services.filter(s => ['risk-assessments', 'health-safety-audits', 'osh-training'].includes(s.slug));
   }, [solve]);
@@ -669,8 +751,19 @@ function QuoteCTA() {
   return <section className="quote-cta-section px-5 py-12 lg:px-8 lg:py-16"><div className="quote-cta-panel relative isolate mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] border border-white/20 bg-[hsl(var(--primary))] text-white sm:rounded-[3.5rem]"><OrganicBackdrop dark vivid /><div className="relative grid gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[1fr_.72fr] lg:items-center lg:px-16 lg:py-16"><div className="relative z-10"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Start a conversation</p><h2 className="display mt-4 max-w-2xl text-5xl leading-[1.02] tracking-[-.045em] sm:text-6xl">Let’s build a safer workplace.</h2><p className="mt-5 max-w-xl text-sm leading-7 text-white/70">Whether you are strengthening an existing safety programme or building one from the ground up, NexHSE is ready to work alongside your team.</p><div className="mt-7 flex flex-wrap items-center gap-5"><Link href="/request-a-quote" className="focus-ring flex min-h-12 items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5" data-testid="link-cta-quote">Request a quote <ArrowUpRight size={16} /></Link><Link href="/contact" className="focus-ring inline-flex items-center gap-2 text-sm font-bold text-white/85 hover:text-white" data-testid="link-cta-consultation">Book a consultation <ChevronRight size={16} /></Link></div></div><div className="quote-cta-visual relative z-10 h-52 w-full sm:h-64 lg:h-72"><img src={siteTrainingImage} alt="NexHSE professionals learning together in a workplace training session" loading="lazy" className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.6)] via-transparent to-transparent" /><span className="absolute bottom-4 left-5 mono-label text-[9px] text-white/75">FIELD-LED / PRACTICAL / PEOPLE</span></div></div></div></section>;
 }
 
-function About() {
+function AboutLegacy() {
   return <Shell><Seo page="about" /><main><PageIntro eyebrow="About NexHSE Africa" title="Safety leadership built around people, systems and practical action." text="NexHSE Africa helps organisations improve workplace safety, risk management, environmental performance and staff capability through clear, practical support." image={trainingImage} /><section className="mx-auto max-w-7xl px-5 py-24 lg:px-8"><Breadcrumbs items={[['About', '/about']]} /><div className="grid gap-14 lg:grid-cols-[.8fr_1.2fr]"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Who we are</p><h2 className="display mt-4 text-5xl leading-[1.05] text-[hsl(var(--primary))]">Technical enough for the system. Human enough for the people.</h2></div><div className="space-y-5 text-base leading-8 text-[hsl(var(--muted-foreground))]"><p>NexHSE Africa is a Kenya-based Environmental, Health and Safety (EHS) consultancy dedicated to helping organisations protect people, strengthen compliance and build safer, more resilient workplaces. We work across the realities of site-based operations, commercial environments and changing risk conditions.</p><p>Our work is grounded in practical observation, risk-led thinking and the understanding that safety culture is built through repeatable systems, informed decision-making and capability development. We support organisations in turning good intentions into consistent operational practice.</p></div></div><div className="mt-24 grid gap-5 lg:grid-cols-3"><div className="rounded-2xl bg-[hsl(var(--primary))] p-7 text-white lg:col-span-2"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Mission</p><p className="display mt-10 max-w-2xl text-3xl leading-tight">To empower organisations with the knowledge, systems and confidence to protect people, prevent loss and build workplaces where safety is second nature.</p></div><div className="rounded-2xl border border-[hsl(var(--border))] p-7"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Vision</p><p className="mt-10 text-xl font-bold leading-8 text-[hsl(var(--primary))]">To be a trusted EHS partner for organisations across Kenya and Africa, helping them build safer, smarter and more compliant workplaces.</p></div></div></section><section className="bg-[hsl(var(--secondary)/.6)] px-5 py-24 lg:px-8"><div className="mx-auto max-w-7xl"><SectionHeader eyebrow="Our approach" title="Make the right thing easier to do." /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[['Integrity', 'Be clear, responsible and honest about the work.'], ['Professionalism', 'Bring preparation, respect and discipline to every engagement.'], ['Innovation', 'Keep improving how safety knowledge reaches the workplace.'], ['Excellence', 'Hold the detail to a high standard because the detail matters.'], ['Teamwork', 'Safety is built with people, not delivered at people.'], ['Safety first', 'Keep human protection at the centre of each decision.']].map(([t, d], i) => <div key={t} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><span className="mono-label text-[10px] text-[hsl(var(--accent))]">0{i + 1}</span><h3 className="mt-8 text-lg font-bold text-[hsl(var(--primary))]">{t}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{d}</p></div>)}</div></div></section><section className="mx-auto max-w-7xl px-5 py-24 lg:px-8"><SectionHeader eyebrow="Why NexHSE" title="Built for the reality on the ground." /><div className="grid gap-4 md:grid-cols-2">{['Experienced professionals', 'Practical, field-tested solutions', 'Customized training', 'Compliance-focused delivery', 'Modern safety standards', 'Reliable ongoing support'].map((item, i) => <div key={item} className="flex items-center gap-4 border-b border-[hsl(var(--border))] py-5"><span className="grid h-9 w-9 place-items-center rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--accent))]"><Check size={17} /></span><span className="font-semibold text-[hsl(var(--primary))]">{item}</span><span className="mono-label ml-auto text-[10px] text-[hsl(var(--muted-foreground))]">0{i + 1}</span></div>)}</div></section><QuoteCTA /></main></Shell>;
+}
+
+function About() {
+  const values = [
+    ['Safety First, Always', 'The protection of life takes priority over deadlines, cost, or convenience — no exceptions.'],
+    ['Integrity in Every Assessment', "We report what we find, even when it's inconvenient for the client or for us. Our clients trust our findings because we don't soften them."],
+    ['Practical Over Paper', 'We train for real competence and genuine behaviour change — not just a certificate that satisfies an inspector and gets filed away.'],
+    ['Environmental Stewardship', 'The "E" in EHS is never an afterthought to the "HS." Environmental responsibility is built into how we assess and advise from the start.'],
+    ['Growth Through Safety', "We measure our own success by one thing: our clients' ability to operate, scale, and expand safely."],
+  ];
+  return <Shell><Seo page="about" /><main><PageIntro eyebrow="Safety and Growth" title="About NexHSE Africa" text="NexHSE Africa is a Kenya-based Environmental, Health and Safety (EHS) consultancy helping organizations protect their people, their environment, and their ability to grow. We work with construction firms, manufacturers, EPZ operators, distributors, banking & finance sectors, telecom infrastructure providers, NGOs and donor-financed infrastructure projects across Kenya — with East Africa and the wider continent as the next chapter of our story." image={trainingImage} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[[ 'About NexHSE Africa', '/about' ]]} /><p className="max-w-4xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">We believe safety and growth aren't in tension — they're the same goal. A workplace that protects its people is a workplace that can scale, win bigger contracts, and operate without the constant risk of incident, litigation, or lost time. That belief sits behind everything we do, from a single-day fire safety training to a full ISO 45001 management system rollout.</p><div className="mt-16 grid gap-6 lg:grid-cols-2"><section className="border-t border-[hsl(var(--border))] pt-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Our Mission</p><h2 className="display mt-4 text-3xl text-[hsl(var(--primary))]">Our Mission</h2><p className="mt-5 text-base leading-8 text-[hsl(var(--muted-foreground))]">To protect people, workplaces, and the environment across Africa by delivering practical, locally-grounded Environmental, Health and Safety solutions that empower organizations to grow safely.</p></section><section className="border-t border-[hsl(var(--border))] pt-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Our Vision</p><h2 className="display mt-4 text-3xl text-[hsl(var(--primary))]">Our Vision</h2><p className="mt-5 text-base leading-8 text-[hsl(var(--muted-foreground))]">To be Africa's most trusted Environmental, Health and Safety partner — growing from Kenya across East Africa and, ultimately, the continent.</p></section></div><section className="mt-16 border-t border-[hsl(var(--border))] pt-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Our Values</p><h2 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Our Values</h2><div className="mt-6 grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">{values.map(([title, text], index) => <article key={title} className="border-t border-[hsl(var(--border))] py-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">VALUE {String(index + 1).padStart(2, '0')}</p><h3 className="mt-3 text-lg font-bold text-[hsl(var(--primary))]">{title}</h3><p className="mt-3 text-sm leading-7 text-[hsl(var(--muted-foreground))]">{text}</p></article>)}</div></section><section className="mt-12 border-t border-[hsl(var(--border))] pt-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Geographic Positioning</p><p className="mt-4 max-w-4xl text-base leading-8 text-[hsl(var(--muted-foreground))]">NexHSE Africa — currently serving the Kenyan market, with planned expansion across East Africa and, over time, the whole of Africa.</p></section></section></main></Shell>;
 }
 
 function ServicesLegacy() {
@@ -690,7 +783,8 @@ function LegacyServices() {
   return <Shell><Seo page="services" /><main><PageIntro eyebrow="Services" title="The right safety work starts with the right question." text="Explore consulting, audits, training and environmental support shaped around your operations, risks and people." image={harnessImage} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Services', '/services']]} /><div className="mb-10 flex flex-col gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 md:flex-row"><label className="flex flex-1 items-center gap-3 rounded-xl bg-[hsl(var(--secondary)/.6)] px-4"><Search size={17} className="text-[hsl(var(--accent))]" /><span className="sr-only">Search services</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search services" className="focus-ring min-h-11 w-full bg-transparent text-sm outline-none" data-testid="input-search-services" /></label><div className="flex gap-2 overflow-auto">{['All', 'Consulting', 'Training'].map(f => <button key={f} onClick={() => setFilter(f)} className={`focus-ring min-h-11 whitespace-nowrap rounded-full px-4 text-xs font-bold ${filter === f ? 'bg-[hsl(var(--primary))] text-white' : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-filter-services-${f.toLowerCase()}`}>{f === 'All' ? 'All services' : f === 'Consulting' ? 'Consulting / Audit' : 'Training / Development'}</button>)}</div></div><div className="mb-8 flex items-end justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">10 core services</p><h2 className="display mt-2 text-4xl text-[hsl(var(--primary))]">A clear catalogue, not a wall of cards.</h2></div><span className="mono-label text-[10px] text-[hsl(var(--muted-foreground))]">{filtered.length} showing</span></div>{filtered.length ? <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{filtered.map(s => <ServiceCard key={s.slug} service={s} />)}</div> : <EmptyState title="No services match that search." text="Try a broader term or reset the filters." action={() => { setQuery(''); setFilter('All'); }} actionLabel="Reset filters" />}</section></main></Shell>;
 }
 
-function Services() {
+function ServicesMiddleLegacy() {
+  const serviceRecords = useServices();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All');
   const categories = [
@@ -701,23 +795,42 @@ function Services() {
     { key: 'Environmental Management', label: 'Environmental management', title: 'Make responsible operations part of the system.', image: environmentalImage, text: 'Environmental planning, education and controls that endure.' },
   ];
   const matches = (service: Service) => `${service.title} ${service.short} ${service.outcome}`.toLowerCase().includes(query.toLowerCase());
-  const visibleCategories = categories.filter(category => filter === 'All' || category.key === filter).map(category => ({ ...category, services: services.filter(service => service.type === category.key && matches(service)) })).filter(category => category.services.length);
+  const visibleCategories = categories.filter(category => filter === 'All' || category.key === filter).map(category => ({ ...category, services: serviceRecords.filter(service => service.type === category.key && matches(service)) })).filter(category => category.services.length);
   return <Shell><Seo page="services" /><main className="services-page relative overflow-hidden"><div className="service-line-art" aria-hidden="true"><span /><span /><span /><span /></div><PageIntro eyebrow="Services portfolio" title="The right safety work starts with the right question." text="Explore the full NexHSE Africa service portfolio, grouped by the work your organisation needs to do." image={harnessImage} /><section className="relative z-10 mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Services', '/services']]} /><div className="mb-14 flex flex-col gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/.88)] p-4 backdrop-blur-sm md:flex-row"><label className="flex flex-1 items-center gap-3 rounded-xl bg-[hsl(var(--secondary)/.6)] px-4"><Search size={17} className="text-[hsl(var(--accent))]" /><span className="sr-only">Search services</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search services" className="focus-ring min-h-11 w-full bg-transparent text-sm outline-none" data-testid="input-search-services" /></label><div className="flex gap-2 overflow-auto">{['All', ...categories.map(category => category.key)].map(option => <button key={option} onClick={() => setFilter(option)} className={`focus-ring min-h-11 whitespace-nowrap rounded-full px-4 text-xs font-bold ${filter === option ? 'bg-[hsl(var(--primary))] text-white' : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-filter-services-${option.toLowerCase().replaceAll(' ', '-')}`}>{option === 'All' ? 'All services' : categories.find(category => category.key === option)?.label}</button>)}</div></div><div className="space-y-20">{visibleCategories.map((category, categoryIndex) => <section key={category.key} className={`service-category service-category--${categoryIndex % 2 ? 'reverse' : 'standard'}`}><div className="service-category-heading"><div className="service-category-visual organic-image organic-image--quiet"><img src={category.image} alt={`${category.label} in practice`} loading="lazy" /></div><div><p className="mono-label text-[10px] font-bold text-[hsl(var(--accent))]">{String(categoryIndex + 1).padStart(2, '0')} / {category.label}</p><h2 className="display mt-3 max-w-xl text-4xl leading-[1.05] tracking-[-.04em] text-[hsl(var(--primary))] sm:text-5xl">{category.title}</h2><p className="mt-4 max-w-lg text-sm leading-7 text-[hsl(var(--muted-foreground))]">{category.text}</p></div></div><div className="service-category-grid">{category.services.map((service, index) => <div key={service.slug} className={`service-tile-stagger service-tile-stagger--${index % 3}`}><ServiceCard service={service} /></div>)}</div></section>)}</div>{!visibleCategories.length && <EmptyState title="No services match that search." text="Try a broader term or reset the filters." action={() => { setQuery(''); setFilter('All'); }} actionLabel="Reset filters" />}<ServiceGallery /></section></main></Shell>;
 }
 
-function ServiceDetail() {
-  const { slug = '' } = useParams<{ slug: string }>(); const service = services.find(s => s.slug === resolveServiceSlug(slug)) ?? services[0]; const [openFaq, setOpenFaq] = useState<number | null>(0); const Icon = service.icon;
-  const relatedServices = services.filter(s => s.type === service.type && s.slug !== service.slug).slice(0, 3);
+function Services() {
+  const serviceRecords = useServices();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('All');
+  const categories = ['OSH — TRAINING & CAPACITY BUILDING', 'ASSESSMENTS, AUDITS & POLICY', 'SPECIALISED SERVICES', 'EQUIPMENT SUPPLY', 'ENVIRONMENTAL MANAGEMENT'];
+  const matching = (service: Service) => `${service.title} ${service.short} ${service.outcome}`.toLowerCase().includes(query.trim().toLowerCase());
+  return <Shell><Seo page="services" title="SERVICE PORTFOLIO | NexHSE Africa" description="What We Offer, What It Involves, What You Get" /><main className="services-page relative overflow-hidden"><PageIntro eyebrow="" title="SERVICE PORTFOLIO" text="What We Offer, What It Involves, What You Get" image={harnessImage} hideFieldLabel /><section className="relative z-10 mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Services', '/services' ]]} /><p className="mb-8 max-w-3xl text-base leading-7 text-[hsl(var(--muted-foreground))]">Every NexHSE Africa service below is built around a real business outcome, not just a technical activity.</p><div className="mb-8 flex flex-col gap-4 border-b border-[hsl(var(--border))] pb-6 md:flex-row md:items-center md:justify-between"><label className="flex min-h-11 max-w-xl flex-1 items-center gap-3 rounded-xl border border-[hsl(var(--border))] px-4"><Search size={17} className="text-[hsl(var(--accent))]" /><span className="sr-only">Search services</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search services" className="focus-ring w-full bg-transparent text-sm outline-none" /></label><div className="flex flex-wrap gap-2">{['All', ...categories].map(category => <button key={category} type="button" onClick={() => setFilter(category)} aria-pressed={filter === category} className={`focus-ring min-h-10 rounded-full border px-3 text-xs font-bold ${filter === category ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`}>{category === 'All' ? 'All services' : category}</button>)}</div></div><div className="space-y-16">{categories.filter(category => filter === 'All' || filter === category).map(category => {
+    const records = serviceRecords.filter(service => service.type === category && matching(service));
+    return records.length ? <section key={category} aria-labelledby={`category-${category}`}><h2 id={`category-${category}`} className="display border-b border-[hsl(var(--border))] pb-4 text-2xl leading-tight text-[hsl(var(--primary))] sm:text-3xl">{category}</h2><div className="mt-6 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{records.map(service => <ServiceCard key={service.slug} service={service} />)}</div></section> : null;
+  })}</div></section></main></Shell>;
+}
+
+function ServiceDetailLegacy() {
+  const { slug = '' } = useParams<{ slug: string }>(); const serviceRecords = useServices(); const service = serviceRecords.find(s => s.slug === resolveServiceSlug(slug)) ?? serviceRecords[0]; const [openFaq, setOpenFaq] = useState<number | null>(0); const Icon = service.icon;
+  const relatedServices = serviceRecords.filter(s => s.type === service.type && s.slug !== service.slug).slice(0, 3);
   return <Shell><Seo page="services" title={`${service.title} | NexHSE Africa`} description={`${service.title} from NexHSE Africa. Practical workplace health, safety, environmental and professional-development support.`} /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-16 pt-12 lg:px-8 lg:pb-24 lg:pt-16"><Breadcrumbs items={[['Services', '/services'], [service.title, `/services/${service.slug}`]]} /><div className="grid items-end gap-10 lg:grid-cols-[1.1fr_.9fr]"><div><div className="grid h-12 w-12 place-items-center rounded-xl bg-[hsl(var(--accent))]"><Icon size={22} /></div><p className="mono-label mt-7 text-[10px] text-[hsl(var(--secondary))]">{service.number} / {service.type}</p><h1 className="display mt-4 text-5xl leading-[1.02] tracking-[-.045em] sm:text-7xl">{service.title}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{service.short}</p><Link href="/request-a-quote" className="focus-ring mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 text-sm font-bold" data-testid="link-service-quote">Discuss this service <ArrowUpRight size={16} /></Link></div><div className="h-72 overflow-hidden rounded-[2rem] border border-white/20"><img src={service.image} alt={`${service.title} in a practical workplace setting`} className="h-full w-full object-cover" /></div></div></div></section><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><div className="grid gap-16 lg:grid-cols-[.75fr_1.25fr]"><div className="lg:sticky lg:top-24 lg:h-fit"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Service brief</p><h2 className="display mt-4 text-4xl leading-tight text-[hsl(var(--primary))]">Clearer decisions.<br />Stronger practice.</h2></div><div className="space-y-12"><InfoBlock title="What it is" text={`A focused ${service.type.toLowerCase()} engagement for organisations that want to understand their context and take practical next steps.`} />
           <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Related services</p><label className="mt-4 block text-sm font-semibold text-[hsl(var(--primary))]">Choose a related service<select className="mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--border))] bg-white px-3 text-sm text-[hsl(var(--primary))]" defaultValue={service.slug} onChange={(event) => window.location.assign(`/services/${event.target.value}`)} data-testid="select-related-service"><option value={service.slug} disabled>{service.title}</option>{relatedServices.map(related => <option key={related.slug} value={related.slug}>{related.title}</option>)}</select></label></div>
           <div className="rounded-2xl bg-[hsl(var(--secondary))] p-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Client workflow</p><div className="mt-5 grid gap-3 sm:grid-cols-3">{[['01', 'Scope'], ['02', 'Assess'], ['03', 'Quote']].map(([step, label]) => <div key={step} className="rounded-xl bg-white p-4"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{step}</p><p className="mt-2 text-sm font-bold text-[hsl(var(--primary))]">{label}</p></div>)}</div><Link href="/request-a-quote" className="focus-ring mt-6 inline-flex items-center gap-2 text-sm font-bold text-[hsl(var(--primary))]" data-testid="link-service-quote-flow">Request a service quotation <ArrowUpRight size={16} /></Link></div>
           <InfoBlock title="Why it matters" text="Safety performance depends on what people can see, understand and act on. A structured approach helps teams move from assumption to informed action." /><InfoBlock title="The NexHSE approach" text="We listen to the operating context, work with the people closest to the risk and keep recommendations grounded in practice. The detail of scope is confirmed with your team before work begins." /><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">What may be included</p><div className="mt-5 grid gap-3 sm:grid-cols-2">{['Context and scope discussion', 'Practical review of current arrangements', 'Clear observations and priorities', 'Conversation about next steps'].map(item => <div key={item} className="flex gap-3 rounded-xl border border-[hsl(var(--border))] p-4 text-sm text-[hsl(var(--muted-foreground))]"><Check size={17} className="shrink-0 text-[hsl(var(--accent))]" />{item}</div>)}</div><p className="mt-4 text-xs text-[hsl(var(--muted-foreground))]">Final deliverables are confirmed against your organisation’s scope. CONTENT REQUIRED for service-specific technical schedules.</p></div><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Frequently asked</p><div className="mt-4 divide-y divide-[hsl(var(--border))] border-y border-[hsl(var(--border))]">{faqs.map((faq, i) => <div key={faq.q}><button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="focus-ring flex min-h-16 w-full items-center justify-between text-left text-sm font-bold text-[hsl(var(--primary))]" aria-expanded={openFaq === i} data-testid={`button-faq-${i}`}><span>{faq.q}</span><ChevronDown size={17} className={`transition-transform ${openFaq === i ? 'rotate-180 text-[hsl(var(--accent))]' : ''}`} /></button>{openFaq === i && <p className="pb-5 pr-8 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{faq.a}</p>}</div>)}</div></div></div></div></section><QuoteCTA /></main></Shell>;
 }
 
+function ServiceDetail() {
+  const { slug = '' } = useParams<{ slug: string }>();
+  const serviceRecords = useServices();
+  const service = serviceRecords.find(item => item.slug === resolveServiceSlug(slug)) ?? serviceRecords[0];
+  return <Shell><Seo page="services" title={`${service.title} | NexHSE Africa`} description={service.short} /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-14 pt-12 lg:px-8 lg:pb-20"><Breadcrumbs items={[[ 'Services', '/services' ], [ service.title, `/services/${service.slug}` ]]} /><p className="mono-label mt-10 text-[10px] text-[hsl(var(--secondary))]">{service.type}</p><h1 className="display mt-4 max-w-4xl text-5xl leading-tight sm:text-7xl">{service.title}</h1></div></section><section className="mx-auto max-w-7xl px-5 py-12 lg:px-8"><div className="grid gap-6 md:grid-cols-2"><article className="border-t border-[hsl(var(--border))] pt-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">WHAT IT IS</p><p className="mt-4 text-lg leading-8 text-[hsl(var(--muted-foreground))]">{service.short}</p></article><article className="border-t border-[hsl(var(--border))] pt-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">THE OUTCOME</p><p className="mt-4 text-lg leading-8 text-[hsl(var(--primary))]">{service.outcome}</p></article></div><Link href="/request-a-quote" className="focus-ring mt-10 inline-flex min-h-12 items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 text-sm font-bold text-white">Request a quote <ArrowUpRight size={16} /></Link><div className="mt-12 border-t border-[hsl(var(--border))] pt-6"><Link href="/services" className="focus-ring text-sm font-bold text-[hsl(var(--primary))]">SERVICE PORTFOLIO</Link></div></section></main></Shell>;
+}
+
 function InfoBlock({ title, text }: { title: string; text: string }) { return <div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{title}</p><p className="mt-4 max-w-2xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{text}</p></div>; }
 
 function Training() {
-  const [filter, setFilter] = useState('All'); const courseServices = services.filter(s => s.type === 'Training & Capacity Building'); const shown = filter === 'All' ? courseServices : courseServices.filter(s => filter === 'Statutory' ? ['osh-training', 'first-aid-training', 'fire-safety-training'].includes(s.slug) : filter === 'Technical' ? ['work-at-height-confined-space-training', 'ppe-training'].includes(s.slug) : false);
+  const [filter, setFilter] = useState('All'); const courseServices = services.filter(s => s.type === 'OSH — TRAINING & CAPACITY BUILDING'); const shown = filter === 'All' ? courseServices : courseServices.filter(s => filter === 'Statutory' ? ['osh-training', 'first-aid-training', 'fire-safety-training'].includes(s.slug) : filter === 'Technical' ? ['work-at-height-confined-space-training', 'ppe-training'].includes(s.slug) : false);
   return <Shell><Seo page="training" /><main><PageIntro eyebrow="Training & development" title="Competence that travels back to the workplace." text="Explore professional development programmes for the people who make safety possible. Course dates, durations and pricing are published only when confirmed." image={trainingImage} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Training', '/training']]} /><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><aside><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Catalogue controls</p><h2 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Find the right learning route.</h2><div className="mt-8 space-y-2">{['All', 'Statutory', 'Technical', 'Management'].map(f => <button key={f} onClick={() => setFilter(f)} className={`focus-ring flex min-h-12 w-full items-center justify-between rounded-xl px-4 text-left text-sm font-bold ${filter === f ? 'bg-[hsl(var(--primary))] text-white' : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-filter-training-${f.toLowerCase()}`}>{f}<ChevronRight size={16} /></button>)}</div><div className="mt-8 rounded-2xl bg-[hsl(var(--secondary))] p-5"><Clock3 size={19} className="text-[hsl(var(--accent))]" /><p className="mt-4 text-sm font-bold text-[hsl(var(--primary))]">Dates, delivery mode and duration</p><p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">CONTENT REQUIRED. Tell us what your team needs and we can discuss the next step.</p></div></aside><div><div className="mb-6 flex items-center justify-between"><p className="text-sm text-[hsl(var(--muted-foreground))]">Showing <strong className="text-[hsl(var(--primary))]">{shown.length}</strong> programmes</p><span className="mono-label text-[10px] text-[hsl(var(--muted-foreground))]">Phase 01 catalogue</span></div><div className="grid gap-4 sm:grid-cols-2">{shown.map(s => <CourseCard key={s.slug} service={s} />)}</div></div></div></section><QuoteCTA /></main></Shell>;
 }
 
@@ -726,7 +839,7 @@ function CourseCard({ service }: { service: Service }) {
 }
 
 function CourseDetail() {
-  const { course = '' } = useParams<{ course: string }>(); const service = services.find(s => s.slug === course && s.type === 'Training & Capacity Building') ?? services[0];
+  const { course = '' } = useParams<{ course: string }>(); const service = services.find(s => s.slug === course && s.type === 'OSH — TRAINING & CAPACITY BUILDING') ?? services[0];
   return <Shell><Seo page="training" title={`${service.title} | NexHSE Africa`} /><main><PageIntro eyebrow="Course detail · Content catalogue" title={service.title} text={service.short} image={service.image} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Training', '/training'], [service.title, `/training/${service.slug}`]]} /><div className="grid gap-12 lg:grid-cols-[1.25fr_.75fr]"><div><InfoBlock title="Course overview" text="This course page is prepared for the future NexHSE catalogue. Course-specific overview, audience, objectives and requirements are CONTENT REQUIRED and will be confirmed before publication." /><div className="mt-12 grid gap-4 sm:grid-cols-2">{[['Who should attend', 'CONTENT REQUIRED'], ['Learning objectives', 'CONTENT REQUIRED'], ['Format & duration', 'CONTENT REQUIRED'], ['Certification / completion', 'CONTENT REQUIRED'], ['Available dates', 'Check availability'], ['Price / quote status', 'Request a quote']].map(([label, value]) => <div key={label} className="rounded-2xl border border-[hsl(var(--border))] p-5"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{label}</p><p className="mt-4 text-sm font-bold text-[hsl(var(--primary))]">{value}</p></div>)}</div></div><div className="h-fit rounded-2xl bg-[hsl(var(--primary))] p-7 text-white lg:sticky lg:top-24"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Ready to discuss training?</p><h2 className="display mt-8 text-3xl">Let’s shape the right programme for your team.</h2><p className="mt-4 text-sm leading-6 text-white/65">Share your organisation, audience and preferred timing. We’ll follow up with the next step.</p><Link href="/request-a-quote" className="focus-ring mt-7 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[hsl(var(--accent))] text-sm font-bold" data-testid="link-course-book">Book training <ArrowUpRight size={16} /></Link></div></div></section><section className="bg-[hsl(var(--secondary)/.6)] px-5 py-20 lg:px-8"><div className="mx-auto max-w-7xl"><SectionHeader eyebrow="Course FAQ" title="Questions before you book?" /><FAQList /></div></section></main></Shell>;
 }
 
@@ -749,7 +862,7 @@ function HseFaqs() {
   return <Shell><Seo page="faqs" /><main><PageIntro eyebrow="HSE FAQs" title="Clear answers for safer decisions." text="Practical answers to common workplace health, safety, fire, training and environmental management questions." image={trainingImage} /><section className="mx-auto max-w-5xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['HSE FAQs', '/faqs']]} /><SectionHeader eyebrow="Frequently asked" title="Questions organisations ask before they act." text="These answers provide a starting point. Your operating context determines the right next step." /><FAQList /></section><QuoteCTA /></main></Shell>;
 }
 
-const blogPosts = [
+export const blogPosts = [
   { slug: 'why-risk-assessments-matter-before-incidents', category: 'Risk management', title: 'Why risk assessments matter before incidents happen', excerpt: 'A practical way to make workplace exposure visible and choose controls before an incident forces the conversation.', date: '2026-09-01', read: '5 min read', image: riskReviewImage, body: ['Risk assessment is the starting point for useful safety work. It turns a general concern into a documented understanding of hazards, people exposed, existing controls and the next improvement that matters.', 'The strongest assessments are grounded in the real task, not only the written procedure. They involve the people doing the work, test whether controls are practical and create a clear route from finding to action.', 'For organisations operating across multiple sites or changing conditions, a repeatable risk assessment process helps leaders compare exposure, prioritise resources and demonstrate that safety decisions are being managed deliberately.'] },
   { slug: 'building-fire-ready-workplaces', category: 'Fire safety', title: 'Building fire-ready workplaces', excerpt: 'Preparedness is more than equipment: it is prevention, practiced response, clear roles and a building people can evacuate.', date: '2026-08-18', read: '4 min read', image: fireImage, body: ['Fire readiness begins with understanding how a fire could start, spread and affect the people in a building. Inspections, training and equipment maintenance work together as one prevention and response system.', 'Fire marshals need practical confidence, evacuation routes need to remain usable and teams need to know what to do before an alarm becomes a real emergency.', 'A regular review of controls helps organisations find gaps early and maintain evidence for internal governance, inspections and statutory responsibilities.'] },
   { slug: 'training-that-changes-workplace-behaviour', category: 'HSE training', title: 'Training that changes workplace behaviour', excerpt: 'The value of training is measured after the classroom, when people apply the knowledge to everyday work.', date: '2026-07-30', read: '5 min read', image: trainingRoomImage, body: ['Good HSE training connects legal responsibility and technical knowledge to the decisions people make during real work. It should give learners language, confidence and practical habits they can use immediately.', 'The best programmes use examples from the organisation, leave room for questions and make the next safe action clear. Refresher learning then helps reinforce what teams have already built.', 'Training becomes more valuable when supervisors and leaders support the same expectations on site, in meetings and during routine planning.'] },
@@ -763,10 +876,23 @@ const blogPosts = [
 type BlogPost = (typeof blogPosts)[number];
 
 function useBlogPosts() {
-  const [storedPosts, setStoredPosts] = useSiteStore<BlogPost[]>('nexhse-blog-posts', blogPosts);
+  const [storedPosts, setStoredPosts] = useState<BlogPost[]>(blogPosts);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => void fetch('/api/admin-data?resource=blog', { cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
+      if (active && Array.isArray(result?.items) && result.items.length) setStoredPosts(result.items);
+    }).catch(() => undefined);
+    refresh();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
   const posts = storedPosts.length ? storedPosts : blogPosts;
 
-  const addPost = (post: BlogPost) => setStoredPosts(current => [post, ...current]);
+  const addPost = (post: BlogPost) => {
+    setStoredPosts(current => [post, ...current]);
+    void fetch('/api/admin-data?resource=blog', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ post }) }).catch(() => undefined);
+  };
   return { posts, addPost };
 }
 
@@ -851,7 +977,7 @@ const baseShopProducts = [
   { name: 'Workplace Safety Kit', category: 'PPE', price: 5600, image: '/assets/shop/03.jpg', description: 'General safety equipment for facilities, teams and operational readiness.' },
 ];
 
-const shopProducts: ShopProduct[] = baseShopProducts.map((product, index) => ({
+export const shopProducts: ShopProduct[] = baseShopProducts.map((product, index) => ({
   ...product,
   imageBackground: product.image.includes('fire-blanket') ? '#f3f0e9' : '#ffffff',
   longDescription: `${product.description} Designed for organisations in Kenya and Africa that need dependable workplace protection, practical readiness and equipment selected for real operating conditions.`,
@@ -908,28 +1034,105 @@ function useShopOrders() {
   const [orders, setOrders] = useSiteStore<ShopOrder[]>('nexhse-shop-orders', []);
   const store = useContext(SiteStoreContext);
 
+  useEffect(() => {
+    const isAdmin = window.location.hostname === 'admin.nexhse.co.ke' || window.location.pathname.startsWith('/admin');
+    if (!isAdmin) return;
+    void fetch('/api/admin-data?resource=orders', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
+      if (Array.isArray(result?.items)) setOrders(result.items);
+    }).catch(() => undefined);
+  }, [setOrders]);
+
   const createOrder = async (order: Omit<ShopOrder, 'id' | 'createdAt'>) => {
     const created: ShopOrder = { ...order, id: `NX-${Date.now().toString(36).toUpperCase()}`, createdAt: new Date().toISOString() };
     const stored = store ? await store.appendOrder(order, created) : created;
     setOrders(current => [stored, ...current.filter(item => item.id !== stored.id)]);
     return stored;
   };
-  const updateOrder = (id: string, changes: Partial<ShopOrder>) => setOrders(current => current.map(order => order.id === id ? { ...order, ...changes } : order));
+  const updateOrder = (id: string, changes: Partial<ShopOrder> & { note?: string }) => {
+    setOrders(current => current.map(order => order.id === id ? { ...order, ...changes } : order));
+    void fetch(`/api/admin-data?resource=orders&id=${encodeURIComponent(id)}`, { method: 'PATCH', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(changes) }).then(async response => {
+      if (!response.ok) throw new Error('Order update failed');
+      const result = await response.json();
+      if (result.item) setOrders(current => current.map(order => order.id === id ? { ...order, ...result.item } : order));
+    }).catch(() => undefined);
+  };
   return { orders, createOrder, updateOrder };
 }
 
 function useServiceTickets() {
   const [tickets, setTickets] = useSiteStore<ServiceTicket[]>('nexhse-service-tickets', []);
-  const updateTicket = (id: string, status: ServiceTicket['status']) => setTickets(current => current.map(ticket => ticket.id === id ? { ...ticket, status } : ticket));
-  const addTicket = (ticket: Omit<ServiceTicket, 'id' | 'createdAt' | 'status'>) => setTickets(current => [{ ...ticket, id: `CS-${Date.now().toString(36).toUpperCase()}`, createdAt: new Date().toISOString(), status: 'open' }, ...current]);
-  return { tickets, updateTicket, addTicket };
+  useEffect(() => {
+    void fetch('/api/admin-data?resource=tickets', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
+      if (Array.isArray(result?.items) && result.items.length) setTickets(result.items);
+    }).catch(() => undefined);
+  }, [setTickets]);
+  const updateTicket = (id: string, status: ServiceTicket['status']) => {
+    setTickets(current => current.map(ticket => ticket.id === id ? { ...ticket, status } : ticket));
+    void fetch(`/api/admin-data?resource=tickets&id=${encodeURIComponent(id)}`, { method: 'PATCH', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) }).catch(() => undefined);
+  };
+  const addTicket = (ticket: Omit<ServiceTicket, 'id' | 'createdAt' | 'status'>) => {
+    const created = { ...ticket, id: `CS-${Date.now().toString(36).toUpperCase()}`, createdAt: new Date().toISOString(), status: 'open' as const };
+    setTickets(current => [created, ...current]);
+    void fetch('/api/admin-data?resource=tickets', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket: created }) }).catch(() => undefined);
+  };
+  const recordFollowup = (id: string, followup: string) => fetch(`/api/admin-data?resource=tickets&id=${encodeURIComponent(id)}`, { method: 'PATCH', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ followup }) });
+  return { tickets, updateTicket, addTicket, recordFollowup };
 }
 
 function useShopProducts() {
-  const [storedProducts, setStoredProducts] = useSiteStore<Partial<ShopProduct>[]>('nexhse-shop-products', shopProducts);
-  const products = useMemo(() => shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(storedProducts.find(product => product.name === defaultProduct.name) ?? {}) })), [storedProducts]);
-  const updateProduct = (name: string, changes: Partial<ShopProduct>) => setStoredProducts(current => shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(current.find(product => product.name === defaultProduct.name) ?? {}), ...(defaultProduct.name === name ? changes : {}) })));
-  return { products, updateProduct };
+  const [storedProducts, setStoredProducts] = useState<Partial<ShopProduct>[]>(shopProducts);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => void fetch('/api/admin-data?resource=products', { cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
+      if (active && Array.isArray(result?.items) && result.items.length) {
+        const isAdmin = window.location.hostname === 'admin.nexhse.co.ke' || window.location.pathname.startsWith('/admin');
+        setStoredProducts(result.items.map((product: ShopProduct) => isAdmin ? { ...product, price: product.basePrice ?? product.price } : product));
+      }
+    }).catch(() => undefined);
+    refresh();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
+  const products = useMemo(() => {
+    const merged = shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(storedProducts.find(product => (product.id && product.id === defaultProduct.id) || product.name === defaultProduct.name) ?? {}) }));
+    const knownNames = new Set(shopProducts.map(product => product.name));
+    return [...merged, ...storedProducts.filter(product => typeof product.name === 'string' && !knownNames.has(product.name)) as ShopProduct[]].filter(product => product.active !== false);
+  }, [storedProducts]);
+  const saveProduct = async (product: ShopProduct) => {
+    const normalized = { ...product, id: product.id ?? product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), sku: product.sku?.trim() || `NX-${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').toUpperCase()}` };
+    const response = await fetch('/api/admin-data?resource=products', { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ product: normalized }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? 'Unable to save product');
+    const saved = result.item ?? normalized;
+    setStoredProducts(current => [...current.filter(item => item.id !== saved.id && item.name !== saved.name), saved]);
+  };
+  const updateProduct = async (name: string, changes: Partial<ShopProduct>) => {
+    const current = products.find(product => product.name === name);
+    if (current) await saveProduct({ ...current, ...changes });
+  };
+  const createProduct = (product: ShopProduct) => saveProduct(product);
+  const deleteProduct = (product: ShopProduct) => {
+    setStoredProducts(current => current.filter(item => item.id !== product.id && item.name !== product.name));
+    void fetch(`/api/admin-data?resource=products&id=${encodeURIComponent(product.id ?? product.name)}`, { method: 'DELETE', credentials: 'same-origin' }).catch(() => undefined);
+  };
+  return { products, updateProduct, createProduct, deleteProduct };
+}
+
+function useServices() {
+  const [records, setRecords] = useState<Service[]>(services);
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/admin-data?resource=services', { cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
+      if (!active || !Array.isArray(result?.items) || !result.items.length) return;
+      const bySlug = new Map<string, Partial<Service>>(result.items.map((item: Partial<Service>) => [item.slug, item]));
+      const merged = [...services.map(service => ({ ...service, ...bySlug.get(service.slug), icon: service.icon })), ...result.items.filter((item: Service) => !services.some(service => service.slug === item.slug)).map((item: Service) => ({ ...item, icon: ShieldCheck }))];
+      const isAdmin = window.location.hostname === 'admin.nexhse.co.ke' || window.location.pathname.startsWith('/admin');
+      setRecords(isAdmin ? merged : merged.filter(service => service.active !== false));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+  return records;
 }
 
 function useProductSeo(product?: ShopProduct) {
@@ -1020,7 +1223,12 @@ function AdminProductEditorPage({ products, updateProduct }: { products: ShopPro
   useEffect(() => { setForm(product); }, [product]);
   if (!form) return null;
 
-  const update = (field: keyof ShopProduct, value: string | number | string[]) => setForm(current => current ? { ...current, [field]: value } : current);
+  const update = (field: keyof ShopProduct, value: string | number | string[]) => {
+    const normalized = typeof value === 'string' && field === 'keywords' ? value.split(',').map(item => item.trim()).filter(Boolean)
+      : typeof value === 'string' && ['features', 'useCases'].includes(field) ? value.split('\n').map(item => item.trim()).filter(Boolean)
+        : value;
+    setForm(current => current ? { ...current, [field]: normalized } : current);
+  };
   const save = () => {
     updateProduct(product.name, { ...form, price: Number(form.price), stock: Number(form.stock), keywords: form.keywords, features: form.features, useCases: form.useCases });
     setSaved(true);
@@ -1031,12 +1239,47 @@ function AdminProductEditorPage({ products, updateProduct }: { products: ShopPro
 
 function AdminProductCatalogue() {
   const [category, setCategory] = useState('All');
-  const { products: allProducts, updateProduct } = useShopProducts();
+  const { products: allProducts, updateProduct, createProduct, deleteProduct } = useShopProducts();
   const products = category === 'All' ? allProducts : allProducts.filter(product => product.category === category);
 
-  return <AdminProductEditorPage products={products} updateProduct={updateProduct} />;
+  return <AdminProductCrudPage products={products} updateProduct={updateProduct} createProduct={createProduct} deleteProduct={deleteProduct} />;
 
   return <Shell><Seo page="home" title="Product Catalogue Admin | NexHSE Africa" description="Private product catalogue management view for the NexHSE Africa shop." /><main><PageIntro eyebrow="Private admin / shop" title="The live product catalogue." text="This view reads the same product records used by the public shop, keeping names, prices, images, categories and stock visibility aligned." image="/assets/shop/helmet.jpg" /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="mb-8 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} type="button" onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-admin-product-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-4 font-bold">Product</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Price</th><th className="p-4 font-bold">Stock</th><th className="p-4 font-bold">Public page</th></tr></thead><tbody>{products.map(product => <tr key={product.name} className="border-t border-[hsl(var(--border))]"><td className="flex items-center gap-3 p-4 font-semibold text-[hsl(var(--primary))]"><img src={product.image} alt="" className="h-12 w-12 rounded-lg object-cover" />{product.name}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.category}</td><td className="p-4 font-semibold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.stock}</td><td className="p-4"><Link href={productDetailHref(product)} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View product <ArrowUpRight size={14} className="ml-1 inline" /></Link></td></tr>)}</tbody></table></div></section></main></Shell>;
+}
+
+function AdminProductCrudPage({ products, updateProduct, createProduct, deleteProduct }: { products: ShopProduct[]; updateProduct: (name: string, changes: Partial<ShopProduct>) => Promise<void>; createProduct: (product: ShopProduct) => Promise<void>; deleteProduct: (product: ShopProduct) => void }) {
+  const [selectedName, setSelectedName] = useState(products[0]?.name ?? '');
+  const [form, setForm] = useState<ShopProduct | null>(products[0] ?? null);
+  const [isNew, setIsNew] = useState(false);
+  const [notice, setNotice] = useState('');
+  useEffect(() => { if (!isNew) setForm(products.find(item => item.name === selectedName) ?? products[0] ?? null); }, [products, selectedName, isNew]);
+  const update = (field: keyof ShopProduct, value: string | number | string[]) => {
+    const normalized = typeof value === 'string' && field === 'keywords' ? value.split(',').map(item => item.trim()).filter(Boolean)
+      : typeof value === 'string' && ['features', 'useCases'].includes(field) ? value.split('\n').map(item => item.trim()).filter(Boolean)
+        : value;
+    setForm(current => current ? { ...current, [field]: normalized } : current);
+  };
+  const add = () => {
+    setIsNew(true);
+    setForm({ name: '', sku: '', category: 'PPE', price: 0, stock: 0, image: '', imageBackground: '#ffffff', description: '', longDescription: '', seoTitle: '', seoDescription: '', keywords: [], features: [], useCases: [], brand: 'NexHSE Africa', condition: 'New', active: true });
+    setNotice('');
+  };
+  const save = async () => {
+    if (!form) return;
+    const clean = { ...form, price: Number(form.price), stock: Number(form.stock) };
+    setNotice('Saving product…');
+    try {
+      if (isNew) await createProduct(clean); else await updateProduct(selectedName, clean);
+      setSelectedName(clean.name);
+      setIsNew(false);
+      setNotice('Product saved to the live shop catalogue.');
+    } catch (issue) {
+      setNotice(issue instanceof Error ? issue.message : 'Unable to save product');
+    }
+  };
+  const fields: [keyof ShopProduct, string][] = [['name', 'Product name'], ['sku', 'SKU'], ['category', 'Category'], ['price', 'Price (KES)'], ['stock', 'Stock quantity'], ['image', 'Image URL'], ['imageBackground', 'Tile background'], ['brand', 'Brand'], ['condition', 'Condition'], ['seoTitle', 'SEO title'], ['seoDescription', 'SEO description']];
+  if (!form) return null;
+  return <Shell><Seo page="home" title="Product catalogue | NexHSE Africa" description="Manage products, stock, merchandising and search metadata." /><main><PageIntro eyebrow="Private admin / shop" title="Maintain the live product catalogue." text="Manage product records, availability, merchandising copy and search metadata used by the public shop." image={form.image || '/assets/shop/helmet.jpg'} /><section className="mx-auto max-w-7xl px-5 py-14 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Products', '/admin/products' ]]} /><div className="grid gap-8 lg:grid-cols-[.65fr_1.35fr]"><aside><button type="button" onClick={add} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white">Add product</button><div className="mt-5 divide-y divide-[hsl(var(--border))]">{products.map(product => <button key={product.id ?? product.name} type="button" onClick={() => { setIsNew(false); setSelectedName(product.name); setNotice(''); }} className={`focus-ring block w-full py-3 text-left ${selectedName === product.name && !isNew ? 'font-bold text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}><span className="block text-sm">{product.name}</span><span className="mt-1 block text-xs">{product.category} · KSh {product.price.toLocaleString()} · {product.stock} in stock</span></button>)}</div></aside><section className="border-t border-[hsl(var(--border))] pt-5"><div className="grid gap-4 sm:grid-cols-2">{fields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input type={field === 'price' || field === 'stock' ? 'number' : 'text'} min={field === 'price' || field === 'stock' ? 0 : undefined} value={String(form[field] ?? '')} onChange={event => update(field, field === 'price' || field === 'stock' ? Number(event.target.value) : event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm" /></label>)}{[['description', 'Short description'], ['longDescription', 'Product details'], ['keywords', 'Search keywords (comma separated)'], ['features', 'Features (one per line)'], ['useCases', 'Use cases (one per line)']].map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">{label}<textarea value={Array.isArray(form[field as keyof ShopProduct]) ? (form[field as keyof ShopProduct] as string[]).join(field === 'keywords' ? ', ' : '\n') : String(form[field as keyof ShopProduct] ?? '')} onChange={event => update(field as keyof ShopProduct, event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label>)}</div><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={save} disabled={!form.name.trim() || !form.category.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Save product</button>{!isNew && <button type="button" onClick={() => { deleteProduct(form); setForm(null); setNotice('Product removed from the live shop catalogue.'); }} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">Delete product</button>}</div>{notice && <p role="status" className="mt-4 text-sm font-semibold text-[hsl(var(--accent))]">{notice}</p>}</section></div></section></main></Shell>;
 }
 
 function LegacyAdminDashboard() {
@@ -1066,15 +1309,23 @@ function LegacyAdminDashboard() {
 function AdminDashboard() {
   const { products } = useShopProducts();
   const { posts } = useBlogPosts();
-  const { cart } = useShopCart();
-  const cartCount = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
+  const { orders } = useShopOrders();
   const stockUnits = products.reduce((sum, product) => sum + product.stock, 0);
   const lowStock = products.filter(product => product.stock <= 8).length;
   const recentPosts = posts.slice(0, 4);
+  const [clientCount, setClientCount] = useState(0);
+  const [promotionCount, setPromotionCount] = useState(0);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   useEffect(() => {
     const timer = window.setInterval(() => setLastRefresh(new Date()), 30000);
+    void Promise.all([
+      fetch('/api/admin-data?resource=clients', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null),
+      fetch('/api/admin-data?resource=promotions', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null),
+    ]).then(([clients, promotions]) => {
+      if (Array.isArray(clients?.items)) setClientCount(clients.items.length);
+      if (Array.isArray(promotions?.items)) setPromotionCount(promotions.items.length);
+    }).catch(() => undefined);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -1082,7 +1333,9 @@ function AdminDashboard() {
     { label: 'Catalogue products', value: products.length, detail: 'shared with public shop' },
     { label: 'Available stock', value: stockUnits, detail: `${lowStock} low-stock items` },
     { label: 'Published articles', value: posts.length, detail: 'available on public blog' },
-    { label: 'Cart activity', value: cartCount, detail: 'items in this browser session' },
+    { label: 'Client accounts', value: clientCount, detail: 'onboarded and order-linked' },
+    { label: 'Orders', value: orders.length, detail: 'live Neon order queue' },
+    { label: 'Promotions', value: promotionCount, detail: 'configured offers' },
   ];
 
   return <Shell><Seo page="home" title="Live Operations Dashboard | NexHSE Africa" description="Live NexHSE Africa operations dashboard for products, stock, blog content and storefront activity." /><main><PageIntro eyebrow="Private admin / live data" title="A clearer view of what is moving." text="This dashboard reads the same product, blog and cart state used across the site. Changes made in the admin tools are reflected in the public catalogue immediately." image={fireImage} /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin']]} /><div className="mb-8 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[hsl(var(--muted-foreground))]">Last checked {lastRefresh.toLocaleTimeString()}</p><div className="flex gap-2"><Link href="/admin/products" className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-full border border-[hsl(var(--border))] px-4 text-xs font-bold text-[hsl(var(--primary))]">Manage products <ArrowUpRight size={14} /></Link><Link href="/admin/blog" className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 text-xs font-bold text-white">Publish blog <ArrowUpRight size={14} /></Link></div></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{metrics.map(metric => <div key={metric.label} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{metric.label}</p><p className="display mt-5 text-4xl text-[hsl(var(--primary))]">{metric.value}</p><p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">{metric.detail}</p></div>)}</div><div className="mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Stock watch</p><h2 className="mt-2 text-2xl font-bold text-[hsl(var(--primary))]">Catalogue health</h2></div><Link href="/admin/products" className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">Edit data <ArrowUpRight size={14} className="ml-1 inline" /></Link></div><div className="mt-6 space-y-3">{products.slice(0, 6).map(product => <div key={product.name} className="flex items-center justify-between gap-4 border-b border-[hsl(var(--border))] pb-3"><div className="flex min-w-0 items-center gap-3"><img src={product.image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" /><span className="truncate text-sm font-semibold text-[hsl(var(--primary))]">{product.name}</span></div><span className={`shrink-0 text-xs font-bold ${product.stock <= 8 ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--accent))]'}`}>{product.stock} units</span></div>)}</div></div><div className="rounded-2xl bg-[hsl(var(--primary))] p-6 text-white"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Content activity</p><h2 className="mt-2 text-2xl font-bold">Recent blog posts</h2><div className="mt-6 space-y-4">{recentPosts.map(post => <Link key={post.slug} href={`/blog/${post.slug}`} className="focus-ring block border-b border-white/15 pb-3"><p className="text-sm font-bold">{post.title}</p><p className="mt-1 text-[10px] text-white/60">{post.category} · {post.date}</p></Link>)}</div><Link href="/admin/blog" className="focus-ring mt-6 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--secondary))]">Manage blog <ArrowUpRight size={14} /></Link></div></div></section></main></Shell>;
@@ -1133,7 +1386,7 @@ function AdminOrdersPage() {
   return <Shell><Seo page="home" title="Order Management | NexHSE Africa" description="Private order fulfilment, customer delivery and payment operations." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Orders', '/admin/orders']]} /><SectionHeader eyebrow="Commerce operations" title="Order fulfilment and payment tracking." text="Review delivery details, payment rails, amounts and update fulfilment status." /><AdminOrderPanel /></main></Shell>;
 }
 
-function AdminCustomersPage() {
+function LegacyAdminCustomersPage() {
   const { orders } = useShopOrders();
   const customers = Array.from(orders.reduce((records, order) => {
     const key = order.delivery.email.trim().toLowerCase();
@@ -1148,7 +1401,33 @@ function AdminCustomersPage() {
   return <Shell><Seo page="home" title="Customer CRM | NexHSE Africa" description="Private NexHSE customer relationship management and order history." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Customers', '/admin/customers']]} /><SectionHeader eyebrow="CRM / customer accounts" title="Customer directory and order history." text="Customer records are assembled from submitted shop orders and stay synchronized with the order queue." /><div className="mb-6 grid gap-4 sm:grid-cols-3">{[{ label: 'Customers', value: customers.length }, { label: 'Orders', value: orders.length }, { label: 'Customer spend', value: `KSh ${customers.reduce((sum, customer) => sum + customer.spend, 0).toLocaleString()}` }].map(metric => <div key={metric.label} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{metric.label}</p><p className="display mt-4 text-3xl text-[hsl(var(--primary))]">{metric.value}</p></div>)}</div>{customers.length ? <div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr>{['Customer', 'Phone', 'Delivery location', 'Orders', 'Lifetime spend', 'Last order'].map(label => <th key={label} className="p-4 font-bold">{label}</th>)}</tr></thead><tbody>{customers.map(customer => <tr key={customer.email} className="border-t border-[hsl(var(--border))]"><td className="p-4"><p className="font-bold text-[hsl(var(--primary))]">{customer.name}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{customer.email}</p></td><td className="p-4">{customer.phone}</td><td className="p-4">{customer.address}, {customer.county}</td><td className="p-4">{customer.orders}</td><td className="p-4 font-bold">KSh {customer.spend.toLocaleString()}</td><td className="p-4">{new Date(customer.lastOrder).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <EmptyState title="No customer orders yet." text="Customers are added to the CRM automatically when they complete shop checkout." href="https://shop.nexhse.co.ke" actionLabel="Open shop" />}</main></Shell>;
 }
 
-function AdminServiceDeskPage() {
+function AdminCustomersPage() {
+  type Client = { id: string; name: string; email: string; phone: string; company: string; industry: string; location: string; notes: string; createdBy: string; orders: number; spend: number; lastOrder: string | null };
+  const [clients, setClients] = useState<Client[]>([]);
+  const [form, setForm] = useState({ id: '', name: '', email: '', phone: '', company: '', industry: '', location: '', notes: '' });
+  const [error, setError] = useState('');
+  const refresh = async () => {
+    const response = await fetch('/api/admin-data?resource=clients', { credentials: 'same-origin', cache: 'no-store' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? 'Unable to load client records');
+    setClients(result.items);
+  };
+  useEffect(() => { void refresh().catch(issue => setError(issue instanceof Error ? issue.message : 'Unable to load clients')); }, []);
+  const update = (field: keyof typeof form, value: string) => setForm(current => ({ ...current, [field]: value }));
+  const save = async () => {
+    setError('');
+    const { id, ...client } = form;
+    const response = await fetch(id ? `/api/admin-data?resource=clients&id=${encodeURIComponent(id)}` : '/api/admin-data?resource=clients', { method: id ? 'PATCH' : 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(id ? client : { client }) });
+    const result = await response.json();
+    if (!response.ok) { setError(result.error ?? 'Unable to save client'); return; }
+    setForm({ id: '', name: '', email: '', phone: '', company: '', industry: '', location: '', notes: '' });
+    await refresh();
+  };
+  const fields: [keyof typeof form, string][] = [['name', 'Contact name'], ['email', 'Email address'], ['phone', 'Phone'], ['company', 'Organisation'], ['industry', 'Industry'], ['location', 'Location']];
+  return <Shell><Seo page="home" title="Client CRM | NexHSE Africa" description="Manage onboarded clients and order history." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Clients', '/admin/customers' ]]} /><SectionHeader eyebrow="Client CRM / ownership" title="Clients and the orders connected to them." text="Team members see clients they onboard. The super admin sees the full client book and order history." /><div className="grid gap-8 lg:grid-cols-[.75fr_1.25fr]"><section className="border-b border-[hsl(var(--border))] pb-8"><h2 className="text-lg font-bold text-[hsl(var(--primary))]">{form.id ? 'Edit client' : 'Onboard a client'}</h2><div className="mt-5 space-y-4">{fields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input type={field === 'email' ? 'email' : 'text'} value={form[field]} onChange={event => update(field, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3" /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))]">Client notes<textarea value={form.notes} onChange={event => update('notes', event.target.value)} className="focus-ring mt-2 min-h-24 w-full rounded-lg border border-[hsl(var(--input))] p-3" /></label><div className="flex gap-2"><button type="button" onClick={() => void save()} disabled={!form.name.trim() || !form.email.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">{form.id ? 'Save client' : 'Add client'}</button>{form.id && <button type="button" onClick={() => setForm({ id: '', name: '', email: '', phone: '', company: '', industry: '', location: '', notes: '' })} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">Cancel</button>}</div></div></section><section><div className="flex items-center justify-between"><h2 className="text-lg font-bold text-[hsl(var(--primary))]">Client book</h2><span className="text-xs text-[hsl(var(--muted-foreground))]">{clients.length} records</span></div><div className="mt-4 divide-y divide-[hsl(var(--border))]">{clients.map(client => <article key={client.id} className="py-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-[hsl(var(--primary))]">{client.name}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{client.company || 'Organisation not set'} · {client.email} · {client.phone}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{client.location} {client.industry ? `· ${client.industry}` : ''} · {client.orders} orders · KSh {client.spend.toLocaleString()}</p>{client.lastOrder && <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Last order {new Date(client.lastOrder).toLocaleDateString()}</p>}</div><button type="button" onClick={() => setForm({ id: client.id, name: client.name, email: client.email, phone: client.phone, company: client.company, industry: client.industry, location: client.location, notes: client.notes })} className="focus-ring min-h-9 rounded-md border border-[hsl(var(--border))] px-3 text-xs font-bold">Edit</button></div>{client.notes && <p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">{client.notes}</p>}</article>)}</div></section></div>{error && <p role="alert" className="mt-5 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</main></Shell>;
+}
+
+function LegacyAdminServiceDeskPage() {
   const { tickets, addTicket, updateTicket } = useServiceTickets();
   const [form, setForm] = useState({ name: '', email: '', subject: '', priority: 'normal' as ServiceTicket['priority'], details: '' });
   const [saved, setSaved] = useState(false);
@@ -1162,10 +1441,42 @@ function AdminServiceDeskPage() {
   return <Shell><Seo page="home" title="Customer Service Desk | NexHSE Africa" description="Private customer support and service request management workspace." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Service desk', '/admin/service']]} /><SectionHeader eyebrow="Customer service / case management" title="Track customer follow-up from one desk." text="Log support requests, assign urgency and move each case through open, in progress and resolved states." /><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><section className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Log support case</p><div className="mt-5 space-y-4">{[['name', 'Customer name'], ['email', 'Customer email'], ['subject', 'Subject']].map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={form[field as keyof typeof form]} onChange={event => update(field as keyof typeof form, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))]">Priority<select value={form.priority} onChange={event => update('priority', event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-xl border border-[hsl(var(--input))] bg-white px-3 text-sm"><option value="normal">Normal</option><option value="urgent">Urgent</option></select></label><label className="block text-sm font-semibold text-[hsl(var(--primary))]">Request details<textarea value={form.details} onChange={event => update('details', event.target.value)} className="focus-ring mt-2 min-h-28 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent p-3 text-sm outline-none" /></label><button type="button" onClick={create} className="focus-ring min-h-11 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white">Create case <ArrowUpRight size={14} className="ml-1 inline" /></button>{saved && <p className="text-xs font-bold text-[hsl(var(--accent))]">Case logged and saved in this browser.</p>}</div></section><section><div className="flex items-center justify-between"><div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Support inbox</p><h2 className="display mt-2 text-3xl text-[hsl(var(--primary))]">{tickets.length} cases</h2></div><span className="text-xs text-[hsl(var(--muted-foreground))]">{tickets.filter(ticket => ticket.status !== 'resolved').length} need attention</span></div><div className="mt-5 space-y-3">{tickets.map(ticket => <article key={ticket.id} className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{ticket.id} · {ticket.priority}</p><h3 className="mt-2 font-bold text-[hsl(var(--primary))]">{ticket.subject}</h3><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{ticket.name} · {ticket.email}</p><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{ticket.details}</p></div><select value={ticket.status} onChange={event => updateTicket(ticket.id, event.target.value as ServiceTicket['status'])} className="focus-ring min-h-10 rounded-xl border border-[hsl(var(--border))] bg-white px-3 text-xs font-bold" aria-label={`Update ${ticket.id} status`}><option>open</option><option>in progress</option><option>resolved</option></select></div></article>)}</div>{tickets.length === 0 && <EmptyState title="Your support inbox is clear." text="Create a case when a customer needs follow-up. Cases and status changes persist in this browser." />}</section></div></main></Shell>;
 }
 
-function AdminAccessGate({ children }: { children: ReactNode }) {
-  const [authenticated, setAuthenticated] = useState(import.meta.env.DEV);
-  const [checking, setChecking] = useState(!import.meta.env.DEV);
+function AdminServiceDeskPage() {
+  const { tickets, addTicket, updateTicket, recordFollowup } = useServiceTickets();
+  const [form, setForm] = useState({ name: '', email: '', subject: '', priority: 'normal' as ServiceTicket['priority'], details: '' });
+  const [followupText, setFollowupText] = useState<Record<string, string>>({});
+  const [followups, setFollowups] = useState<Record<string, { id: string; message: string; createdAt: string }[]>>({});
+  const [selectedId, setSelectedId] = useState('');
+  const [error, setError] = useState('');
+  const update = (field: keyof typeof form, value: string) => setForm(current => ({ ...current, [field]: value }));
+  const create = () => {
+    if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.details.trim()) return;
+    addTicket(form);
+    setForm({ name: '', email: '', subject: '', priority: 'normal', details: '' });
+  };
+  const loadFollowups = async (id: string) => {
+    setSelectedId(id);
+    const response = await fetch(`/api/admin-data?resource=tickets&id=${encodeURIComponent(id)}`, { credentials: 'same-origin', cache: 'no-store' });
+    const result = await response.json();
+    if (response.ok) setFollowups(current => ({ ...current, [id]: result.followups ?? [] }));
+  };
+  const submitFollowup = async (ticket: ServiceTicket) => {
+    const message = followupText[ticket.id]?.trim();
+    if (!message) return;
+    const response = await recordFollowup(ticket.id, message);
+    if (!response.ok) { setError('Unable to save follow-up.'); return; }
+    setFollowupText(current => ({ ...current, [ticket.id]: '' }));
+    await loadFollowups(ticket.id);
+  };
+  return <Shell><Seo page="home" title="Service desk | NexHSE Africa" description="Manage customer service cases and follow-up history." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Service desk', '/admin/service' ]]} /><SectionHeader eyebrow="Customer service / case management" title="Track service requests through resolution." text="Create cases, assign urgency, update status and keep a dated record of customer follow-up." /><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><section className="border-b border-[hsl(var(--border))] pb-8"><h2 className="text-lg font-bold text-[hsl(var(--primary))]">Log support case</h2><div className="mt-5 space-y-4">{[['name', 'Customer name'], ['email', 'Customer email'], ['subject', 'Subject']].map(([field, label]) => <label key={field} className="block text-sm font-semibold">{label}<input value={form[field as keyof typeof form]} onChange={event => update(field as keyof typeof form, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3" /></label>)}<label className="block text-sm font-semibold">Priority<select value={form.priority} onChange={event => update('priority', event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-white px-3"><option value="normal">Normal</option><option value="urgent">Urgent</option></select></label><label className="block text-sm font-semibold">Details<textarea value={form.details} onChange={event => update('details', event.target.value)} className="focus-ring mt-2 min-h-28 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3" /></label><button type="button" onClick={create} disabled={!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.details.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Create case</button></div></section><section><div className="flex items-center justify-between"><h2 className="text-lg font-bold text-[hsl(var(--primary))]">Open and recent cases</h2><span className="text-xs text-[hsl(var(--muted-foreground))]">{tickets.length} total</span></div><div className="mt-4 divide-y divide-[hsl(var(--border))]">{tickets.map(ticket => <article key={ticket.id} className="py-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-bold text-[hsl(var(--primary))]">{ticket.subject}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{ticket.name} · <a href={`mailto:${ticket.email}`} className="underline">{ticket.email}</a> · {ticket.priority}</p><p className="mt-2 text-sm leading-6">{ticket.details}</p></div><label className="text-xs font-bold">Status<select value={ticket.status} onChange={event => updateTicket(ticket.id, event.target.value as ServiceTicket['status'])} className="focus-ring mt-1 min-h-9 rounded-lg border border-[hsl(var(--border))] bg-white px-2"><option value="open">Open</option><option value="in progress">In progress</option><option value="resolved">Resolved</option></select></label></div><button type="button" onClick={() => void loadFollowups(ticket.id)} className="focus-ring mt-3 text-xs font-bold text-[hsl(var(--accent))]">{selectedId === ticket.id ? 'Refresh follow-up history' : 'View follow-up history'}</button>{selectedId === ticket.id && <div className="mt-3 border-l border-[hsl(var(--border))] pl-3">{(followups[ticket.id] ?? []).map(item => <p key={item.id} className="mb-2 text-xs text-[hsl(var(--muted-foreground))]">{new Date(item.createdAt).toLocaleString()} · {item.message}</p>)}</div>}<div className="mt-3 flex gap-2"><textarea value={followupText[ticket.id] ?? ''} onChange={event => setFollowupText(current => ({ ...current, [ticket.id]: event.target.value }))} aria-label={`Follow-up note for ${ticket.subject}`} placeholder="Add an internal follow-up note" className="focus-ring min-h-10 flex-1 rounded-lg border border-[hsl(var(--border))] p-2 text-xs" /><button type="button" onClick={() => void submitFollowup(ticket)} className="focus-ring min-h-10 rounded-lg border border-[hsl(var(--border))] px-3 text-xs font-bold">Record note</button></div></article>)}</div></section></div>{error && <p role="alert" className="mt-4 text-sm text-[hsl(var(--destructive))]">{error}</p>}</main></Shell>;
+}
+
+function AdminAccessGate({ children, ownerOnly = false }: { children: ReactNode; ownerOnly?: boolean }) {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [role, setRole] = useState('');
   const [credential, setCredential] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -1175,10 +1486,9 @@ function AdminAccessGate({ children }: { children: ReactNode }) {
       if (!meta) { meta = document.createElement('meta'); meta.name = name; document.head.appendChild(meta); }
       meta.content = 'noindex, nofollow';
     }
-    if (import.meta.env.DEV) return;
     let active = true;
     void fetch('/api/admin-session', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.json()).then(result => {
-      if (active) setAuthenticated(Boolean(result.authenticated));
+      if (active) { setAuthenticated(Boolean(result.authenticated)); setRole(result.user?.role ?? ''); }
     }).catch(() => undefined).finally(() => { if (active) setChecking(false); });
     return () => { active = false; };
   }, []);
@@ -1186,24 +1496,160 @@ function AdminAccessGate({ children }: { children: ReactNode }) {
   const signIn = async () => {
     setError('');
     try {
-      const response = await fetch('/api/admin-session', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: credential }) });
+      const response = await fetch('/api/admin-session', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(emailAddress.trim() ? { email: emailAddress, password: credential } : { key: credential }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Unable to sign in');
       setAuthenticated(true);
+      setRole(result.user?.role ?? '');
       setCredential('');
     } catch (issue) { setError(issue instanceof Error ? issue.message : 'Unable to sign in'); }
   };
 
-  if (authenticated) return <>{children}</>;
-  return <main className="grid min-h-[100dvh] place-items-center bg-[hsl(var(--primary))] px-5 py-12"><div className="w-full max-w-md rounded-2xl border border-white/15 bg-white p-7 shadow-2xl sm:p-9"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">NexHSE / operations</p><h1 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Admin sign in.</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Use the admin credential configured for this deployment.</p>{checking ? <p className="mt-7 text-sm text-[hsl(var(--muted-foreground))]">Checking session…</p> : <div className="mt-7"><label className="block text-sm font-semibold text-[hsl(var(--primary))]">Admin credential<input type="password" value={credential} onChange={event => setCredential(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void signIn(); }} autoComplete="current-password" className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] px-3 text-sm outline-none" data-testid="input-admin-credential" /></label><button type="button" onClick={() => void signIn()} disabled={!credential} className="focus-ring mt-5 min-h-12 w-full rounded-full bg-[hsl(var(--primary))] text-sm font-bold text-white disabled:opacity-40" data-testid="button-admin-sign-in">Sign in</button>{error && <p role="alert" className="mt-4 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</div>}</div></main>;
+  if (authenticated && (!ownerOnly || role === 'owner')) return <>{children}</>;
+  if (authenticated && ownerOnly) return <main className="grid min-h-[70vh] place-items-center px-5"><p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">This workspace area is restricted to the super admin account.</p></main>;
+  return <main className="grid min-h-[100dvh] place-items-center bg-[hsl(var(--primary))] px-5 py-12"><div className="w-full max-w-md rounded-2xl border border-white/15 bg-white p-7 shadow-2xl sm:p-9"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">NexHSE / operations</p><h1 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Admin sign in.</h1><p className="mt-3 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Use your admin account credentials.</p>{checking ? <p className="mt-7 text-sm text-[hsl(var(--muted-foreground))]">Checking session…</p> : <div className="mt-7">{emailAddress !== null && <label className="mb-4 block text-sm font-semibold text-[hsl(var(--primary))]">Email address <span className="font-normal text-[hsl(var(--muted-foreground))]">(team accounts)</span><input type="email" value={emailAddress} onChange={event => setEmailAddress(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void signIn(); }} autoComplete="username" className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] px-3 text-sm outline-none" data-testid="input-admin-email" /></label>}<label className="block text-sm font-semibold text-[hsl(var(--primary))]">Password or owner API key<input type="password" value={credential} onChange={event => setCredential(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void signIn(); }} autoComplete="current-password" className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] px-3 text-sm outline-none" data-testid="input-admin-credential" /></label><button type="button" onClick={() => void signIn()} disabled={!credential} className="focus-ring mt-5 min-h-12 w-full rounded-full bg-[hsl(var(--primary))] text-sm font-bold text-white disabled:opacity-40" data-testid="button-admin-sign-in">Sign in</button>{error && <p role="alert" className="mt-4 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</div>}</div></main>;
+}
+
+function AdminInviteAcceptance() {
+  const token = new URLSearchParams(window.location.search).get('token') ?? '';
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const accept = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      const response = await fetch('/api/admin-invitations/accept', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, password }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Unable to accept invitation');
+      window.location.replace('/');
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : 'Unable to accept invitation');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  return <main className="grid min-h-[100dvh] place-items-center bg-[hsl(var(--primary))] px-5 py-12"><section className="w-full max-w-md rounded-2xl bg-white p-8"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">NexHSE / team access</p><h1 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Create your account.</h1><p className="mt-3 text-sm text-[hsl(var(--muted-foreground))]">Choose a password with at least 12 characters to activate this invitation.</p><label className="mt-7 block text-sm font-semibold text-[hsl(var(--primary))]">New password<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" minLength={12} className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] px-3 text-sm outline-none" /></label><button type="button" onClick={() => void accept()} disabled={!token || password.length < 12 || submitting} className="focus-ring mt-5 min-h-12 w-full rounded-full bg-[hsl(var(--primary))] text-sm font-bold text-white disabled:opacity-40">{submitting ? 'Activating…' : 'Activate account'}</button>{error && <p role="alert" className="mt-4 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</section></main>;
+}
+
+function AdminServicesPage() {
+  const publicServices = useServices();
+  const [rows, setRows] = useState<Service[]>(services);
+  const [selectedSlug, setSelectedSlug] = useState(services[0].slug);
+  const [form, setForm] = useState<Service>(services[0]);
+  const [isNew, setIsNew] = useState(false);
+  const [notice, setNotice] = useState('');
+  useEffect(() => { setRows(publicServices); }, [publicServices]);
+  useEffect(() => {
+    void fetch('/api/admin-data?resource=services', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.json()).then(async result => {
+      if (Array.isArray(result.items) && result.items.length === 0) {
+        const initialServices = services.map(service => ({ ...service, id: service.slug, active: true }));
+        await fetch('/api/admin-data?resource=services', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ services: initialServices }) });
+      }
+    }).catch(() => undefined);
+  }, []);
+  useEffect(() => { if (!isNew) setForm(rows.find(service => service.slug === selectedSlug) ?? rows[0]); }, [rows, selectedSlug, isNew]);
+  const update = (field: keyof Service, value: string) => setForm(current => ({ ...current, [field]: value }));
+  const create = () => {
+    const blank: Service = { slug: '', number: String(rows.length + 1).padStart(2, '0'), title: '', short: '', outcome: '', type: 'OSH — TRAINING & CAPACITY BUILDING', icon: ShieldCheck, image: trainingImage, group: 'Training', active: true };
+    setIsNew(true);
+    setForm(blank);
+    setNotice('');
+  };
+  const save = async () => {
+    const slug = form.slug.trim() || form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const service = { ...form, slug, id: form.id ?? slug, active: true };
+    const response = await fetch('/api/admin-data?resource=services', { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service }) });
+    if (!response.ok) { setNotice('Unable to save service. Check your admin access and required fields.'); return; }
+    setRows(current => [...current.filter(item => item.slug !== slug), service]);
+    setSelectedSlug(slug);
+    setIsNew(false);
+    setNotice('Service saved to the live catalogue.');
+  };
+  const remove = async () => {
+    const response = await fetch(`/api/admin-data?resource=services&id=${encodeURIComponent(form.id ?? form.slug)}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: form }) });
+    if (!response.ok) { setNotice('Unable to remove service.'); return; }
+    setRows(current => current.filter(item => item.slug !== form.slug));
+    setSelectedSlug(rows.find(item => item.slug !== form.slug)?.slug ?? '');
+    setIsNew(false);
+    setNotice('Service archived from the public catalogue.');
+  };
+  const fields: [keyof Service, string][] = [['title', 'Service title'], ['slug', 'URL slug'], ['number', 'Catalogue number'], ['type', 'Service category'], ['group', 'Short label'], ['image', 'Image path']];
+  return <Shell><Seo page="home" title="Service catalogue | NexHSE Africa" description="Manage public service catalogue records." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Services', '/admin/services' ]]} /><SectionHeader eyebrow="Service catalogue / CRUD" title="Keep the public service portfolio current." text="Create, edit, publish or archive service records used by the public catalogue." /><div className="grid gap-8 lg:grid-cols-[.7fr_1.3fr]"><aside><button type="button" onClick={create} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white">Add service</button><div className="mt-5 divide-y divide-[hsl(var(--border))]">{rows.map(service => <button key={service.slug} type="button" onClick={() => { setIsNew(false); setSelectedSlug(service.slug); }} className={`focus-ring block w-full py-3 text-left ${selectedSlug === service.slug && !isNew ? 'font-bold text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}><span className="block text-sm">{service.title}</span><span className="mt-1 block text-xs">{service.type}</span></button>)}</div></aside><section className="border-t border-[hsl(var(--border))] pt-5"><div className="grid gap-4 sm:grid-cols-2">{fields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={String(form[field] ?? '')} onChange={event => update(field, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm" /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">Short description<textarea value={form.short} onChange={event => update('short', event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label><label className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">Customer outcome<textarea value={form.outcome} onChange={event => update('outcome', event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label></div><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={() => void save()} disabled={!form.title.trim() || !form.short.trim() || !form.type.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Save service</button>{!isNew && <button type="button" onClick={() => void remove()} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">Archive service</button>}</div>{notice && <p role="status" className="mt-4 text-sm font-semibold text-[hsl(var(--accent))]">{notice}</p>}</section></div></main></Shell>;
+}
+
+function AdminPromotionsPage() {
+  const { products } = useShopProducts();
+  const [promotions, setPromotions] = useState<ShopPromotion[]>([]);
+  const [form, setForm] = useState<Omit<ShopPromotion, 'id' | 'usageCount'> & { id?: string; usageCount?: number }>({ code: '', name: '', description: '', discountType: 'percentage', discountValue: 10, productIds: [], startsAt: null, endsAt: null, usageLimit: null, usageCount: 0, active: true });
+  const [error, setError] = useState('');
+  const refresh = async () => {
+    const response = await fetch('/api/admin-data?resource=promotions', { credentials: 'same-origin', cache: 'no-store' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? 'Unable to load promotions');
+    setPromotions(result.items);
+  };
+  useEffect(() => { void refresh().catch(issue => setError(issue instanceof Error ? issue.message : 'Unable to load promotions')); }, []);
+  const update = (field: keyof typeof form, value: string | number | boolean | string[] | null) => setForm(current => ({ ...current, [field]: value }));
+  const save = async () => {
+    setError('');
+    const payload = { ...form, code: form.code.trim().toUpperCase(), startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null, endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null, usageLimit: form.usageLimit ? Number(form.usageLimit) : null };
+    const response = await fetch('/api/admin-data?resource=promotions', { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ promotion: payload }) });
+    const result = await response.json();
+    if (!response.ok) { setError(result.error ?? 'Unable to save promotion'); return; }
+    await refresh();
+    setForm({ code: '', name: '', description: '', discountType: 'percentage', discountValue: 10, productIds: [], startsAt: null, endsAt: null, usageLimit: null, usageCount: 0, active: true });
+  };
+  const edit = (promotion: ShopPromotion) => setForm({ ...promotion, startsAt: promotion.startsAt ? new Date(promotion.startsAt).toISOString().slice(0, 16) : null, endsAt: promotion.endsAt ? new Date(promotion.endsAt).toISOString().slice(0, 16) : null });
+  const remove = async (id: string) => {
+    const response = await fetch(`/api/admin-data?resource=promotions&id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+    if (!response.ok) { setError('Unable to remove promotion'); return; }
+    await refresh();
+  };
+  return <Shell><Seo page="home" title="Promotions | NexHSE Africa" description="Create and schedule shop promotions." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Promotions', '/admin/promotions' ]]} /><SectionHeader eyebrow="Shop / promotions" title="Schedule live product offers." text="Active promotions are applied to eligible products and recalculated by the checkout API. Usage caps are enforced in Neon." /><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><section className="border-b border-[hsl(var(--border))] pb-8"><h2 className="text-lg font-bold text-[hsl(var(--primary))]">{form.id ? 'Edit promotion' : 'Create promotion'}</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold">Promotion code<input value={form.code} onChange={event => update('code', event.target.value.toUpperCase())} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="text-sm font-semibold">Name<input value={form.name} onChange={event => update('name', event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="text-sm font-semibold">Discount<select value={form.discountType} onChange={event => update('discountType', event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-white px-3"><option value="percentage">Percentage</option><option value="fixed">Fixed KES</option></select></label><label className="text-sm font-semibold">Value<input type="number" min="1" max={form.discountType === 'percentage' ? 100 : undefined} value={form.discountValue} onChange={event => update('discountValue', Number(event.target.value))} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="text-sm font-semibold">Starts at<input type="datetime-local" value={form.startsAt?.slice(0, 16) ?? ''} onChange={event => update('startsAt', event.target.value || null)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="text-sm font-semibold">Ends at<input type="datetime-local" value={form.endsAt?.slice(0, 16) ?? ''} onChange={event => update('endsAt', event.target.value || null)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="text-sm font-semibold">Redemption limit<input type="number" min="1" value={form.usageLimit ?? ''} onChange={event => update('usageLimit', event.target.value ? Number(event.target.value) : null)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.active} onChange={event => update('active', event.target.checked)} />Active</label><label className="text-sm font-semibold sm:col-span-2">Products <span className="font-normal text-[hsl(var(--muted-foreground))]">(leave empty to include all)</span><select multiple value={form.productIds} onChange={event => update('productIds', Array.from(event.currentTarget.selectedOptions, option => option.value))} className="focus-ring mt-2 min-h-36 w-full rounded-lg border border-[hsl(var(--input))] bg-white p-2 text-sm">{products.map(product => <option key={product.id ?? product.name} value={product.id ?? product.name}>{product.name} · {product.sku}</option>)}</select></label><label className="text-sm font-semibold sm:col-span-2">Description<textarea value={form.description} onChange={event => update('description', event.target.value)} className="focus-ring mt-2 min-h-16 w-full rounded-lg border border-[hsl(var(--input))] p-3" /></label></div><div className="mt-4 flex gap-3"><button type="button" onClick={() => void save()} disabled={!form.code.trim() || !form.name.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Save promotion</button>{form.id && <button type="button" onClick={() => setForm({ code: '', name: '', description: '', discountType: 'percentage', discountValue: 10, productIds: [], startsAt: null, endsAt: null, usageLimit: null, usageCount: 0, active: true })} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">New</button>}</div></section><section><h2 className="text-lg font-bold text-[hsl(var(--primary))]">Current promotions</h2><div className="mt-4 divide-y divide-[hsl(var(--border))]">{promotions.map(promotion => <article key={promotion.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><button type="button" onClick={() => edit(promotion)} className="focus-ring text-left"><span className="block font-bold text-[hsl(var(--primary))]">{promotion.name} · {promotion.code}</span><span className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">{promotion.discountType === 'percentage' ? `${promotion.discountValue}%` : `KSh ${promotion.discountValue}`} · {promotion.usageCount}{promotion.usageLimit ? ` / ${promotion.usageLimit}` : ''} uses · {promotion.active ? 'Active' : 'Paused'}</span></button><button type="button" onClick={() => void remove(promotion.id)} className="focus-ring min-h-9 rounded-md border border-[hsl(var(--border))] px-3 text-xs font-bold">Delete</button></article>)}</div></section></div>{error && <p role="alert" className="mt-5 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</main></Shell>;
+}
+
+function AdminUsersPage() {
+  const [users, setUsers] = useState<{ id: string; email: string; name: string; role: string; active: boolean }[]>([]);
+  const [invitations, setInvitations] = useState<{ id: string; email: string; role: string; expiresAt: string; acceptedAt: string | null }[]>([]);
+  const [form, setForm] = useState({ name: '', email: '', role: 'staff' });
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [error, setError] = useState('');
+  const refresh = async () => {
+    const response = await fetch('/api/admin-invitations', { credentials: 'same-origin', cache: 'no-store' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? 'Unable to load accounts');
+    setUsers(result.users);
+    setInvitations(result.invitations);
+  };
+  useEffect(() => { void refresh().catch(issue => setError(issue instanceof Error ? issue.message : 'Unable to load accounts')); }, []);
+  const invite = async () => {
+    setError('');
+    try {
+      const response = await fetch('/api/admin-invitations', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Unable to create invitation');
+      const basePath = window.location.hostname === 'admin.nexhse.co.ke' ? '/accept-invite' : '/admin/accept-invite';
+      setInviteUrl(`${window.location.origin}${basePath}?token=${encodeURIComponent(result.invitation.token)}`);
+      setForm({ name: '', email: '', role: 'staff' });
+      await refresh();
+    } catch (issue) { setError(issue instanceof Error ? issue.message : 'Unable to create invitation'); }
+  };
+  const updateUser = async (id: string, changes: { active?: boolean; role?: string }) => {
+    const response = await fetch('/api/admin-invitations', { method: 'PATCH', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ...changes }) });
+    if (!response.ok) { const result = await response.json(); setError(result.error ?? 'Unable to update account'); return; }
+    await refresh();
+  };
+  return <Shell><Seo page="home" title="Team access | NexHSE Africa" description="Manage administrator accounts and invitations." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Team access', '/admin/users' ]]} /><SectionHeader eyebrow="Access management" title="People who can operate the workspace." text="Invite secondary users, assign access roles, and suspend accounts when access should end." /><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><section className="border-b border-[hsl(var(--border))] pb-8"><h2 className="text-lg font-bold text-[hsl(var(--primary))]">Invite a teammate</h2><div className="mt-5 space-y-4"><label className="block text-sm font-semibold">Full name<input value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="block text-sm font-semibold">Email address<input type="email" value={form.email} onChange={event => setForm(current => ({ ...current, email: event.target.value }))} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] px-3" /></label><label className="block text-sm font-semibold">Role<select value={form.role} onChange={event => setForm(current => ({ ...current, role: event.target.value }))} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-white px-3"><option value="staff">Staff</option><option value="admin">Admin</option></select></label><button type="button" onClick={() => void invite()} disabled={!form.name.trim() || !form.email.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Create invitation</button>{inviteUrl && <div className="border-l-2 border-[hsl(var(--accent))] pl-4"><p className="text-xs font-bold">One-time invite link. Copy it now; it expires in 72 hours.</p><input readOnly value={inviteUrl} className="mt-2 min-h-10 w-full border-b border-[hsl(var(--border))] text-xs" /><button type="button" onClick={() => void navigator.clipboard?.writeText(inviteUrl)} className="focus-ring mt-2 text-xs font-bold text-[hsl(var(--primary))]">Copy invite link</button></div>}</div></section><section><h2 className="text-lg font-bold text-[hsl(var(--primary))]">Accounts</h2><div className="mt-4 divide-y divide-[hsl(var(--border))]">{users.map(user => <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-bold text-[hsl(var(--primary))]">{user.name}</p><p className="text-xs text-[hsl(var(--muted-foreground))]">{user.email} · {user.role} · {user.active ? 'Active' : 'Suspended'}</p></div><div className="flex gap-2"><select aria-label={`Role for ${user.email}`} value={user.role} onChange={event => void updateUser(user.id, { role: event.target.value })} className="min-h-9 rounded-md border border-[hsl(var(--border))] bg-white px-2 text-xs"><option value="staff">Staff</option><option value="admin">Admin</option></select><button type="button" onClick={() => void updateUser(user.id, { active: !user.active })} className="focus-ring min-h-9 rounded-md border border-[hsl(var(--border))] px-3 text-xs font-bold">{user.active ? 'Suspend' : 'Reactivate'}</button></div></div>)}</div><h2 className="mt-8 text-lg font-bold text-[hsl(var(--primary))]">Invitations</h2><div className="mt-3 divide-y divide-[hsl(var(--border))]">{invitations.map(invitation => <div key={invitation.id} className="py-3 text-sm"><p className="font-semibold">{invitation.email} · {invitation.role}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{invitation.acceptedAt ? 'Accepted' : new Date(invitation.expiresAt) < new Date() ? 'Expired' : `Expires ${new Date(invitation.expiresAt).toLocaleString()}`}</p></div>)}</div></section></div>{error && <p role="alert" className="mt-5 text-sm font-semibold text-[hsl(var(--destructive))]">{error}</p>}</main></Shell>;
 }
 
 function AdminWorkspaceRoute() {
   const [location] = useLocation();
   const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
   const path = isAdminHost ? location : location.replace(/^\/admin(?=\/|$)/, '') || '/';
-  const page = path === '/' ? <AdminDashboard /> : path === '/products' ? <AdminProductCatalogue /> : path === '/blog' ? <AdminBlogManager /> : path === '/orders' ? <AdminOrdersPage /> : path === '/customers' ? <AdminCustomersPage /> : path === '/service' ? <AdminServiceDeskPage /> : <NotFound />;
-  return <AdminAccessGate>{page}</AdminAccessGate>;
+  const page = path === '/' ? <AdminDashboard /> : path === '/products' ? <AdminProductCatalogue /> : path === '/promotions' ? <AdminPromotionsPage /> : path === '/services' ? <AdminServicesPage /> : path === '/blog' ? <AdminBlogManager /> : path === '/orders' ? <AdminOrdersPage /> : path === '/customers' ? <AdminCustomersPage /> : path === '/service' ? <AdminServiceDeskPage /> : path === '/users' ? <AdminUsersPage /> : <NotFound />;
+  const ownerOnly = ['/products', '/promotions', '/services', '/blog', '/users'].includes(path);
+  return <AdminAccessGate ownerOnly={ownerOnly}>{page}</AdminAccessGate>;
 }
 
 function AppRouter() {
@@ -1214,10 +1660,10 @@ function AppRouter() {
   }
 
   if (hostname === 'admin.nexhse.co.ke') {
-    return <AdminWorkspaceRoute />;
+    return <Switch><Route path="/accept-invite" component={AdminInviteAcceptance} /><Route component={AdminWorkspaceRoute} /></Switch>;
   }
 
-  return <Switch><Route path="/" component={Home} /><Route path="/about" component={About} /><Route path="/services" component={Services} /><Route path="/services/:slug" component={ServiceDetail} /><Route path="/shop" component={ShopEntry} /><Route path="/shop/checkout" component={ShopCheckout} /><Route path="/shop/:slug" component={ProductDetail} /><Route path="/admin" component={AdminWorkspaceRoute} /><Route path="/admin/products" component={AdminWorkspaceRoute} /><Route path="/admin/blog" component={AdminWorkspaceRoute} /><Route path="/admin/orders" component={AdminWorkspaceRoute} /><Route path="/admin/customers" component={AdminWorkspaceRoute} /><Route path="/admin/service" component={AdminWorkspaceRoute} /><Route path="/training" component={Training} /><Route path="/training/:course" component={CourseDetail} /><Route path="/projects" component={Projects} /><Route path="/projects/:project" component={ProjectDetail} /><Route path="/accreditations" component={Accreditations} /><Route path="/testimonials" component={Testimonials} /><Route path="/knowledge" component={Knowledge} /><Route path="/knowledge/:article" component={ArticleDetail} /><Route path="/faqs" component={HseFaqs} /><Route path="/blog" component={DynamicBlog} /><Route path="/blog/:slug" component={DynamicBlogDetail} /><Route path="/contact" component={Contact} /><Route path="/request-a-quote" component={Quote} /><Route component={NotFound} /></Switch>;
+  return <Switch><Route path="/" component={Home} /><Route path="/about" component={About} /><Route path="/services" component={Services} /><Route path="/services/:slug" component={ServiceDetail} /><Route path="/shop" component={ShopEntry} /><Route path="/shop/checkout" component={ShopCheckout} /><Route path="/shop/:slug" component={ProductDetail} /><Route path="/admin/accept-invite" component={AdminInviteAcceptance} /><Route path="/admin" component={AdminWorkspaceRoute} /><Route path="/admin/products" component={AdminWorkspaceRoute} /><Route path="/admin/promotions" component={AdminWorkspaceRoute} /><Route path="/admin/services" component={AdminWorkspaceRoute} /><Route path="/admin/blog" component={AdminWorkspaceRoute} /><Route path="/admin/orders" component={AdminWorkspaceRoute} /><Route path="/admin/customers" component={AdminWorkspaceRoute} /><Route path="/admin/service" component={AdminWorkspaceRoute} /><Route path="/admin/users" component={AdminWorkspaceRoute} /><Route path="/training" component={Training} /><Route path="/training/:course" component={CourseDetail} /><Route path="/projects" component={Projects} /><Route path="/projects/:project" component={ProjectDetail} /><Route path="/accreditations" component={Accreditations} /><Route path="/testimonials" component={Testimonials} /><Route path="/knowledge" component={Knowledge} /><Route path="/knowledge/:article" component={ArticleDetail} /><Route path="/faqs" component={HseFaqs} /><Route path="/blog" component={DynamicBlog} /><Route path="/blog/:slug" component={DynamicBlogDetail} /><Route path="/contact" component={Contact} /><Route path="/request-a-quote" component={Quote} /><Route component={NotFound} /></Switch>;
 }
 function NotFound() { return <Shell><main className="mx-auto flex min-h-[65vh] max-w-3xl flex-col items-center justify-center px-5 text-center"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">404 / PAGE NOT FOUND</p><h1 className="display mt-5 text-6xl text-[hsl(var(--primary))]">That route is out of scope.</h1><p className="mt-5 text-sm text-[hsl(var(--muted-foreground))]">The page you’re looking for may be coming soon.</p><Link href="/" className="focus-ring mt-8 rounded-full bg-[hsl(var(--primary))] px-6 py-3 text-sm font-bold text-white" data-testid="link-not-found-home">Return home</Link></main></Shell>; }
 function Router() { const [location] = useLocation(); return <ErrorBoundary resetKey={location}><AppRouter /></ErrorBoundary>; }

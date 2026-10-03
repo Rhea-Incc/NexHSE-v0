@@ -5,10 +5,17 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "audit:official": "tsx ./audit-official-content.mjs",
+    "seed:content": "tsx ./seed-content.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "vite": "catalog:"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0",
+    "@workspace/db": "workspace:*"
   }
 }
