@@ -37,7 +37,7 @@ export function createSupabaseAuthClient() {
   if (!config) throw new Error('Supabase public auth configuration is missing.');
   return createClient(config.url, config.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
+  }) as any;
 }
 
 function createSupabaseAdminClient() {
@@ -45,11 +45,11 @@ function createSupabaseAdminClient() {
   if (!url || !serviceRoleKey) return null;
   return createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
+  }) as any;
 }
 
 export async function provisionSupabaseAdminUser(user: { email: string; password: string; adminId: string; name?: string }) {
-  const supabase = createSupabaseAdminClient();
+  const supabase: any = createSupabaseAdminClient();
   if (!supabase) return 'unavailable' as const;
 
   const { error } = await supabase.auth.admin.createUser({

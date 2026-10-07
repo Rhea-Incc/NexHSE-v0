@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { listShopOrdersForEmailEdge } from '@workspace/db/edge';
+import { listShopOrdersForEmailEdge } from '../../lib/db/src/edge';
 import { getNeonConnectionString, getPublicSupabaseConfig } from '../../lib/api/supabase';
 
 export const config = { runtime: 'edge' };
@@ -17,7 +17,7 @@ export default async function handler(req: Request) {
   if (!supabaseConfig || !databaseUrl) return new Response(JSON.stringify({ error: 'Auth or Neon database is not configured' }), { status: 503, headers });
 
   try {
-    const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+    const supabase: any = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
     const { data, error } = await supabase.auth.getUser(match[1]);

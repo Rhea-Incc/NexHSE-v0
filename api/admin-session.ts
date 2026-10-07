@@ -29,7 +29,8 @@ export default async function handler(req: any, res: any) {
     const supabaseMode = process.env.SUPABASE_AUTH_MODE ?? 'hybrid';
     if (supabaseMode !== 'legacy' && isSupabaseAuthConfigured()) {
       try {
-        const { data, error } = await createSupabaseAuthClient().auth.signInWithPassword({ email, password });
+        const authClient: any = createSupabaseAuthClient();
+        const { data, error } = await authClient.auth.signInWithPassword({ email, password });
         if (!error && data.user?.email) {
           const supabaseEmail = data.user.email.trim().toLowerCase();
           const admin = await findAdminUserByEmail(supabaseEmail);
@@ -52,7 +53,8 @@ export default async function handler(req: any, res: any) {
       if (provisioned === 'exists') return res.status(401).json({ error: 'Invalid admin credential' });
       if (provisioned === 'created') {
         try {
-          const { data } = await createSupabaseAuthClient().auth.signInWithPassword({ email: user.email, password });
+          const authClient: any = createSupabaseAuthClient();
+          const { data } = await authClient.auth.signInWithPassword({ email: user.email, password });
           if (data.session) {
             setAdminSessionCookie(res, { userId: user.id, email: user.email, role: user.role });
             return res.status(200).json({ authenticated: true, user: { id: user.id, email: user.email, role: user.role }, supabaseSession: { access_token: data.session.access_token, refresh_token: data.session.refresh_token } });
