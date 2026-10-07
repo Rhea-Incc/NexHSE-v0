@@ -19,6 +19,13 @@ export default async function handler(req: any, res: any) {
   const password = req.body?.password ?? req.body?.credential ?? req.body?.key;
 
   if (email && typeof password === 'string') {
+    const ownerEmail = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();
+    if (ownerEmail && email === ownerEmail && verifyAdminPassword(password)) {
+      const owner = { userId: 'owner', email: ownerEmail, role: 'owner' };
+      setAdminSessionCookie(res, owner);
+      return res.status(200).json({ authenticated: true, user: { id: owner.userId, email: owner.email, role: owner.role } });
+    }
+
     const supabaseMode = process.env.SUPABASE_AUTH_MODE ?? 'hybrid';
     if (supabaseMode !== 'legacy' && isSupabaseAuthConfigured()) {
       try {

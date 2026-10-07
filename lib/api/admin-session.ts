@@ -9,7 +9,14 @@ export function isTrustedOrigin(req: any) {
   const origin = String(req.headers?.origin ?? '');
   if (!origin) return process.env.NODE_ENV !== 'production';
   const configuredOrigins = (process.env.SITE_ALLOWED_ORIGINS ?? '').split(',').map(value => value.trim()).filter(Boolean);
-  return trustedOrigins.has(origin) || configuredOrigins.includes(origin);
+  if (trustedOrigins.has(origin) || configuredOrigins.includes(origin)) return true;
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const hostname = new URL(origin).hostname;
+      return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+    } catch { return false; }
+  }
+  return false;
 }
 
 export type AdminSession = { userId: string; email: string; role: string; expiresAt: number };

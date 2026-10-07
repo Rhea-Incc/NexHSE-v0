@@ -1,7 +1,7 @@
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -14,6 +14,72 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH || '/';
+const workspaceRoot = path.resolve(import.meta.dirname, '../..');
+
+function localAdminSessionApi() {
+  return {
+    name: 'nexhse-local-admin-session-api',
+    configResolved(config: { command: string; mode: string }) {
+      if (config.command !== 'serve') return;
+      for (const [key, value] of Object.entries(loadEnv(config.mode, workspaceRoot, ''))) {
+        if (process.env[key] === undefined) process.env[key] = value;
+      }
+    },
+    configureServer(server: any) {
+      server.middlewares.use('/api/admin-session', (req: any, res: any, next: () => void) => {
+        if (!['GET', 'POST', 'DELETE'].includes(req.method ?? '')) return next();
+
+        const invoke = async () => {
+          try {
+            const module = await server.ssrLoadModule(path.join(workspaceRoot, 'api/admin-session.ts'));
+            const apiResponse = Object.create(res);
+            apiResponse.setHeader = (name: string, value: string) => res.setHeader(name, value);
+            apiResponse.status = (code: number) => { res.statusCode = code; return apiResponse; };
+            apiResponse.json = (value: unknown) => {
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(value));
+              return apiResponse;
+            };
+            apiResponse.end = (value?: string) => res.end(value);
+            await module.default(req, apiResponse);
+          } catch (error) {
+            server.config.logger.error(error);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ error: 'Local admin authentication failed' }));
+          }
+        };
+
+        if (req.method !== 'POST') {
+          void invoke();
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        let size = 0;
+        req.on('data', (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > 16_384) {
+            res.statusCode = 413;
+            res.end();
+            req.destroy();
+            return;
+          }
+          chunks.push(chunk);
+        });
+        req.on('end', () => {
+          try {
+            req.body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            void invoke();
+          } catch {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+          }
+        });
+      });
+    },
+  };
+}
 
 export default defineConfig({
   base: basePath,
@@ -21,6 +87,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    localAdminSessionApi(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined
       ? [
