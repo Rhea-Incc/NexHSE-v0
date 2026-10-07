@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const siteStoreTable = pgTable('nexhse_site_store', {
   key: text('key').primaryKey(),
@@ -39,6 +39,11 @@ export const shopOrdersTable = pgTable('nexhse_shop_orders', {
   notes: text('notes'),
   paymentMethod: text('payment_method').notNull(),
   paymentStatus: text('payment_status').notNull(),
+  stripeSessionId: text('stripe_session_id'),
+  stripeCheckoutUrl: text('stripe_checkout_url'),
+  mpesaCheckoutRequestId: text('mpesa_checkout_request_id'),
+  paymentReference: text('payment_reference'),
+  paymentStatusTokenHash: text('payment_status_token_hash'),
   orderStatus: text('order_status').notNull(),
   promotionCode: text('promotion_code'),
   discount: integer('discount').notNull().default(0),
@@ -52,7 +57,13 @@ export const shopOrdersTable = pgTable('nexhse_shop_orders', {
   items: jsonb('items').notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, table => [index('nexhse_shop_orders_created_at_idx').on(table.createdAt), index('nexhse_shop_orders_status_idx').on(table.orderStatus), index('nexhse_shop_orders_email_created_idx').on(table.email, table.createdAt)]);
+}, table => [
+  index('nexhse_shop_orders_created_at_idx').on(table.createdAt),
+  index('nexhse_shop_orders_status_idx').on(table.orderStatus),
+  index('nexhse_shop_orders_email_created_idx').on(table.email, table.createdAt),
+  uniqueIndex('nexhse_shop_orders_stripe_session_idx').on(table.stripeSessionId),
+  uniqueIndex('nexhse_shop_orders_mpesa_request_idx').on(table.mpesaCheckoutRequestId),
+]);
 
 export const shopPromotionsTable = pgTable('nexhse_shop_promotions', {
   id: text('id').primaryKey(),

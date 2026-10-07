@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import * as schema from './schema';
 
@@ -133,6 +133,81 @@ export async function listShopOrdersForEmails(emails: string[]) {
 export async function findShopOrder(id: string) {
   const [order] = await getDatabase().select().from(schema.shopOrdersTable).where(eq(schema.shopOrdersTable.id, id)).limit(1);
   return order ?? null;
+}
+
+export async function findShopOrderByMpesaRequestId(checkoutRequestId: string) {
+  const [order] = await getDatabase().select().from(schema.shopOrdersTable).where(eq(schema.shopOrdersTable.mpesaCheckoutRequestId, checkoutRequestId)).limit(1);
+  return order ?? null;
+}
+
+export async function findShopOrderPaymentStatus(id: string, token: string) {
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const [order] = await getDatabase().select({ id: schema.shopOrdersTable.id, paymentStatus: schema.shopOrdersTable.paymentStatus })
+    .from(schema.shopOrdersTable)
+    .where(and(eq(schema.shopOrdersTable.id, id), eq(schema.shopOrdersTable.paymentStatusTokenHash, tokenHash)))
+    .limit(1);
+  return order ?? null;
+}
+
+export async function hasShopOrderPaymentToken(id: string, token: string) {
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const [order] = await getDatabase().select({ id: schema.shopOrdersTable.id })
+    .from(schema.shopOrdersTable)
+    .where(and(eq(schema.shopOrdersTable.id, id), eq(schema.shopOrdersTable.paymentStatusTokenHash, tokenHash)))
+    .limit(1);
+  return Boolean(order);
+}
+
+export async function saveShopOrderPaymentReference(id: string, reference: { stripeSessionId?: string; stripeCheckoutUrl?: string; mpesaCheckoutRequestId?: string }) {
+  const [order] = await getDatabase().update(schema.shopOrdersTable).set({ ...reference, updatedAt: new Date() }).where(eq(schema.shopOrdersTable.id, id)).returning();
+  return order ?? null;
+}
+
+export async function reserveShopOrderMpesaRequest(id: string) {
+  const db = getDatabase();
+  return db.transaction(async transaction => {
+    const [order] = await transaction.select({ requestId: schema.shopOrdersTable.mpesaCheckoutRequestId })
+      .from(schema.shopOrdersTable).where(eq(schema.shopOrdersTable.id, id)).limit(1).for('update');
+    if (!order || order.requestId) return null;
+    const requestId = `pending-${randomUUID()}`;
+    await transaction.update(schema.shopOrdersTable).set({ mpesaCheckoutRequestId: requestId, updatedAt: new Date() }).where(eq(schema.shopOrdersTable.id, id));
+    return requestId;
+  });
+}
+
+export async function completeShopOrderMpesaRequest(id: string, reservationId: string, providerRequestId: string) {
+  const [order] = await getDatabase().update(schema.shopOrdersTable).set({ mpesaCheckoutRequestId: providerRequestId, updatedAt: new Date() })
+    .where(and(eq(schema.shopOrdersTable.id, id), eq(schema.shopOrdersTable.mpesaCheckoutRequestId, reservationId))).returning();
+  return order ?? null;
+}
+
+export async function releaseShopOrderMpesaRequest(id: string, reservationId: string) {
+  await getDatabase().update(schema.shopOrdersTable).set({ mpesaCheckoutRequestId: null, updatedAt: new Date() })
+    .where(and(eq(schema.shopOrdersTable.id, id), eq(schema.shopOrdersTable.mpesaCheckoutRequestId, reservationId)));
+}
+
+export async function updateShopOrderPaymentStatus(id: string, status: 'paid' | 'failed', note: string, paymentReference?: string | null) {
+  const db = getDatabase();
+  return db.transaction(async transaction => {
+    const [order] = await transaction.select().from(schema.shopOrdersTable).where(eq(schema.shopOrdersTable.id, id)).limit(1).for('update');
+    if (!order) return null;
+    if (order.paymentStatus === 'paid' || order.paymentStatus === status) return order;
+
+    const [updated] = await transaction.update(schema.shopOrdersTable).set({
+      paymentStatus: status,
+      ...(paymentReference ? { paymentReference } : {}),
+      updatedAt: new Date(),
+    }).where(eq(schema.shopOrdersTable.id, id)).returning();
+    await transaction.insert(schema.orderEventsTable).values({
+      id: randomUUID(),
+      orderId: id,
+      eventType: 'payment-update',
+      status,
+      note: note.slice(0, 2000),
+      createdBy: 'payment-provider',
+    });
+    return updated ?? null;
+  });
 }
 
 export async function upsertShopOrder(order: typeof schema.shopOrdersTable.$inferInsert) {
