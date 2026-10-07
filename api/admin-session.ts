@@ -1,5 +1,6 @@
 import { clearAdminSessionCookie, getActiveAdminSession, isTrustedOrigin, setAdminSessionCookie, verifyAdminKey, verifyAdminPassword, verifyHashedAdminPassword } from '../lib/api/admin-session';
 import { findAdminUserByEmail } from '@workspace/db';
+import { createSupabaseAuthClient, isSupabaseAuthConfigured, provisionSupabaseAdminUser } from '../lib/api/supabase';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');
@@ -18,8 +19,49 @@ export default async function handler(req: any, res: any) {
   const password = req.body?.password ?? req.body?.credential ?? req.body?.key;
 
   if (email && typeof password === 'string') {
+    const ownerEmail = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();
+    if (ownerEmail && email === ownerEmail && verifyAdminPassword(password)) {
+      const owner = { userId: 'owner', email: ownerEmail, role: 'owner' };
+      setAdminSessionCookie(res, owner);
+      return res.status(200).json({ authenticated: true, user: { id: owner.userId, email: owner.email, role: owner.role } });
+    }
+
+    const supabaseMode = process.env.SUPABASE_AUTH_MODE ?? 'hybrid';
+    if (supabaseMode !== 'legacy' && isSupabaseAuthConfigured()) {
+      try {
+        const { data, error } = await createSupabaseAuthClient().auth.signInWithPassword({ email, password });
+        if (!error && data.user?.email) {
+          const supabaseEmail = data.user.email.trim().toLowerCase();
+          const admin = await findAdminUserByEmail(supabaseEmail);
+          if (!admin || !admin.active) return res.status(403).json({ error: 'This Supabase identity is not an active NexHSE admin' });
+          setAdminSessionCookie(res, { userId: admin.id, email: admin.email, role: admin.role });
+          return res.status(200).json({ authenticated: true, user: { id: admin.id, email: admin.email, role: admin.role }, supabaseSession: data.session ? { access_token: data.session.access_token, refresh_token: data.session.refresh_token } : null });
+        }
+      } catch {
+        if (supabaseMode === 'required') return res.status(503).json({ error: 'Supabase authentication is unavailable' });
+      }
+      if (supabaseMode === 'required') return res.status(401).json({ error: 'Invalid admin credential' });
+    } else if (supabaseMode === 'required') {
+      return res.status(503).json({ error: 'Supabase authentication is not configured' });
+    }
+
     const user = await findAdminUserByEmail(email);
     if (!user || !user.active || !verifyHashedAdminPassword(password, user.passwordHash)) return res.status(401).json({ error: 'Invalid admin credential' });
+    if (supabaseMode !== 'legacy' && isSupabaseAuthConfigured()) {
+      const provisioned = await provisionSupabaseAdminUser({ email: user.email, password, adminId: user.id, name: user.name });
+      if (provisioned === 'exists') return res.status(401).json({ error: 'Invalid admin credential' });
+      if (provisioned === 'created') {
+        try {
+          const { data } = await createSupabaseAuthClient().auth.signInWithPassword({ email: user.email, password });
+          if (data.session) {
+            setAdminSessionCookie(res, { userId: user.id, email: user.email, role: user.role });
+            return res.status(200).json({ authenticated: true, user: { id: user.id, email: user.email, role: user.role }, supabaseSession: { access_token: data.session.access_token, refresh_token: data.session.refresh_token } });
+          }
+        } catch {
+          if (supabaseMode === 'required') return res.status(503).json({ error: 'Supabase authentication is unavailable' });
+        }
+      }
+    }
     setAdminSessionCookie(res, { userId: user.id, email: user.email, role: user.role });
     return res.status(200).json({ authenticated: true, user: { id: user.id, email: user.email, role: user.role } });
   }
