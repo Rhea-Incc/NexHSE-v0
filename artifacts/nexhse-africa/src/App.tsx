@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
@@ -23,11 +23,17 @@ const constructionTrainingImage = '/assets/image-07.jpg';
 const nexhseLogo = '/assets/logo01_1787991144513-BzpG7v81.png';
 
 const queryClient = new QueryClient();
+const AdminInvoicesPage = lazy(() => import('@/components/admin-sales').then(module => ({ default: module.AdminInvoicesPage })));
+const AdminQuotesPage = lazy(() => import('@/components/admin-sales').then(module => ({ default: module.AdminQuotesPage })));
+const QuoteRequestForm = lazy(() => import('@/components/admin-sales').then(module => ({ default: module.QuoteRequestForm })));
 const phone = '0705 065 852';
 const siteUrl = 'https://www.nexhse.co.ke';
 const email = 'info@nexhse.co.ke';
 type SiteStoreKey = 'nexhse-shop-cart' | 'nexhse-shop-products' | 'nexhse-shop-orders' | 'nexhse-service-tickets' | 'nexhse-blog-posts';
 const siteStoreKeys: SiteStoreKey[] = ['nexhse-shop-cart', 'nexhse-shop-products', 'nexhse-shop-orders', 'nexhse-service-tickets', 'nexhse-blog-posts'];
+const emptyCart: Record<string, number> = {};
+const emptyOrders: ShopOrder[] = [];
+const emptyTickets: ServiceTicket[] = [];
 type SiteStoreContextValue = { read: <T>(key: SiteStoreKey, fallback: T) => Promise<T>; write: (key: SiteStoreKey, value: unknown) => void; appendOrder: (order: Omit<ShopOrder, 'id' | 'createdAt'>, fallback: ShopOrder) => Promise<ShopOrder> };
 const SiteStoreContext = createContext<SiteStoreContextValue | null>(null);
 const socialLinks = [
@@ -235,6 +241,7 @@ function Logo({ light = false }: { light?: boolean }) {
 
 function Navbar() {
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [location] = useLocation();
   const { cart } = useShopCart();
   const hostname = window.location.hostname.toLowerCase();
@@ -258,7 +265,30 @@ function Navbar() {
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [open]);
-  return <header className="relative z-40 border-b border-[hsl(var(--border)/.7)] bg-[hsl(var(--background)/.93)] backdrop-blur-md">
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      return;
+    }
+    let settleTimer: number | undefined;
+    let frame = 0;
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        setVisible(false);
+        if (settleTimer) window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => setVisible(true), 260);
+      });
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+      if (settleTimer) window.clearTimeout(settleTimer);
+    };
+  }, [open]);
+  return <header className={`site-header z-40 border-b border-[hsl(var(--border)/.7)] bg-[hsl(var(--background)/.93)] backdrop-blur-md ${visible || open ? 'is-visible' : ''}`}>
     <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 lg:px-8">
       <Logo />
       <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary navigation">
@@ -274,7 +304,7 @@ function Navbar() {
         {quoteHref.startsWith('https://') ? <a href={quoteHref} className="focus-ring flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-[12px] font-bold tracking-wide text-white transition-transform hover:-translate-y-0.5" data-testid="link-header-quote">Request a quote <ArrowUpRight size={15} /></a> : <Link href={quoteHref} className="focus-ring flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-[12px] font-bold tracking-wide text-white transition-transform hover:-translate-y-0.5" data-testid="link-header-quote">Request a quote <ArrowUpRight size={15} /></Link>}
       </div>
        <button onClick={() => setOpen(!open)} className="mobile-menu-toggle focus-ring relative grid h-11 w-11 place-items-center rounded-full border border-[hsl(var(--border))] transition-[transform,background-color,border-color] duration-700 ease-[cubic-bezier(.16,1,.3,1)] hover:border-[hsl(var(--accent)/.55)] hover:bg-[hsl(var(--secondary)/.55)] lg:hidden" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} data-testid="button-mobile-menu">
-         <span className={`hamburger-aura ${open ? 'is-open' : ''}`} aria-hidden="true"><span /><span /></span>
+      <span className={`hamburger-aura ${open ? 'is-open' : ''}`} aria-hidden="true"><span /><span /></span>
          <span className={`hamburger-mark ${open ? 'is-open' : ''}`} aria-hidden="true"><span /><span /><span /></span>
       </button>
     </div>
@@ -314,7 +344,7 @@ function MobileActions() {
   return <div className={`fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/.94)] p-1 shadow-[0_12px_40px_rgba(15,52,68,.18)] backdrop-blur transition-all duration-200 md:hidden ${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-[calc(100%+1rem)] opacity-0'}`} aria-hidden={!visible}>
     <a href="https://wa.me/254705065852" target="_blank" rel="noreferrer" className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-bold text-[hsl(var(--accent))]" data-testid="link-sticky-whatsapp"><span className="text-xs">WhatsApp</span></a>
     <a href={`tel:${phone.replaceAll(' ', '')}`} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-bold text-[hsl(var(--primary))]" data-testid="link-sticky-call"><Phone size={15} /><span>Call</span></a>
-    {quoteHref.startsWith('https://') ? <a href={quoteHref} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></a> : <Link href={quoteHref} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></Link>}
+      {quoteHref.startsWith('https://') ? <a href={quoteHref} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></a> : <Link href={quoteHref} className="focus-ring flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl bg-[hsl(var(--primary))] text-[10px] font-bold text-white" data-testid="link-sticky-quote"><ArrowUpRight size={15} /><span>Quote</span></Link>}
   </div>;
 }
 
@@ -460,7 +490,7 @@ function SiteStoreProvider({ children }: { children: ReactNode }) {
     else queueRef.current.push(message);
   };
 
-  const value: SiteStoreContextValue = {
+  const value = useMemo<SiteStoreContextValue>(() => ({
     read: <T,>(key: SiteStoreKey, fallback: T) => {
       const readLocal = () => {
         try {
@@ -508,7 +538,7 @@ function SiteStoreProvider({ children }: { children: ReactNode }) {
         throw new Error('We could not save your order. Please try again.');
       }
     },
-  };
+  }), [bridgeReady, isRemoteHost]);
 
   return <SiteStoreContext.Provider value={value}>{children}{isRemoteHost && <iframe ref={frameRef} src={`${siteUrl}/storage-bridge.html`} onLoad={() => frameRef.current?.contentWindow?.postMessage({ type: 'bridge-init' }, siteUrl)} title="NexHSE shared storage bridge" tabIndex={-1} aria-hidden="true" className="site-storage-bridge" />}</SiteStoreContext.Provider>;
 }
@@ -551,6 +581,7 @@ function useSiteStore<T>(key: SiteStoreKey, fallback: T): [T, (value: T | ((curr
   }, [context, key, fallback]);
 
   useEffect(() => {
+    const remoteStoreHost = ['shop.nexhse.co.ke', 'admin.nexhse.co.ke'].includes(window.location.hostname.toLowerCase());
     const refresh = () => {
       if (document.visibilityState !== 'visible') return;
       void context.read(key, fallback).then(remote => {
@@ -559,9 +590,9 @@ function useSiteStore<T>(key: SiteStoreKey, fallback: T): [T, (value: T | ((curr
         setValue(current => JSON.stringify(current) === JSON.stringify(nextValue) ? current : nextValue as T);
       });
     };
-    const timer = window.setInterval(refresh, 15000);
+    const timer = remoteStoreHost ? window.setInterval(refresh, 60_000) : undefined;
     window.addEventListener('focus', refresh);
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+    return () => { if (timer) window.clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, [context, key, fallback]);
 
   useEffect(() => {
@@ -578,8 +609,33 @@ function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
   const showAdminNav = isAdminHost || location.startsWith('/admin');
-  const showOrderPanel = location === '/admin' || (isAdminHost && location === '/');
-  return <div className="grain min-h-[100dvh]"><CursorAtmosphere /><Navbar /><CheckoutGatewayStatusNotice location={location} />{showAdminNav && <AdminWorkspaceNavigation />}<PageCanvasArtwork />{children}{showOrderPanel && <AdminOrderPanel />}<CartDock /><Footer /><MobileActions /></div>;
+  if (showAdminNav) return <div className="admin-app-shell min-h-[100dvh]"><AdminWorkspaceHeader isAdminHost={isAdminHost} />{children}</div>;
+  return <div className="grain min-h-[100dvh]"><CursorAtmosphere /><Navbar /><CheckoutGatewayStatusNotice location={location} /><PageCanvasArtwork />{children}<CartDock /><Footer /><MobileActions /></div>;
+}
+
+function AdminWorkspaceHeader({ isAdminHost }: { isAdminHost: boolean }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    let frame = 0;
+    let settleTimer: number | undefined;
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        setVisible(false);
+        if (settleTimer) window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => setVisible(true), 260);
+      });
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+      if (settleTimer) window.clearTimeout(settleTimer);
+    };
+  }, []);
+
+  return <div className={`admin-header-shell ${visible ? 'is-visible' : ''}`}><header className="admin-topbar"><a href={isAdminHost ? '/' : '/admin'} className="focus-ring flex items-center gap-3" aria-label="NexHSE operations home"><img src={nexhseLogo} alt="" /><span><strong>NexHSE</strong><small>OPERATIONS</small></span></a><span className="admin-topbar-status"><span /> Workspace</span></header><AdminWorkspaceNavigation /></div>;
 }
 
 function CheckoutGatewayStatusNotice({ location }: { location: string }) {
@@ -599,8 +655,9 @@ function AdminWorkspaceNavigation() {
   const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
   const base = isAdminHost ? '' : '/admin';
   const [isOwner, setIsOwner] = useState(false);
+  const [location] = useLocation();
   useEffect(() => { void fetch('/api/admin-session', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.json()).then(result => setIsOwner(result.user?.role === 'owner')).catch(() => undefined); }, []);
-  const allLinks = [['Overview', base || '/'], ['Orders', `${base}/orders`], ['Customers', `${base}/customers`], ['Service desk', `${base}/service`], ['Products', `${base}/products`], ['Promotions', `${base}/promotions`], ['Services', `${base}/services`], ['Team access', `${base}/users`], ['Blog', `${base}/blog`]];
+  const allLinks = [['Overview', base || '/'], ['Orders', `${base}/orders`], ['Customers', `${base}/customers`], ['Service desk', `${base}/service`], ['Quotes', `${base}/quotes`], ['Invoices', `${base}/invoices`], ['Products', `${base}/products`], ['Promotions', `${base}/promotions`], ['Services', `${base}/services`], ['Team access', `${base}/users`], ['Blog', `${base}/blog`]];
   const links = isOwner ? allLinks : allLinks.filter(([label]) => ['Overview', 'Orders', 'Customers', 'Service desk'].includes(label));
   const signOut = async () => {
     await fetch('/api/admin-session', { method: 'DELETE', credentials: 'same-origin' });
@@ -610,7 +667,7 @@ function AdminWorkspaceNavigation() {
     } catch { /* Legacy-only sessions may not have Supabase configured. */ }
     window.location.reload();
   };
-  return <nav className="admin-workspace-nav" aria-label="Admin workspace">{links.map(([label, href]) => <Link key={label} href={href} className="focus-ring" data-testid={`link-admin-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>)}<button type="button" onClick={() => void signOut()} className="focus-ring ml-auto" data-testid="button-admin-sign-out">Sign out</button></nav>;
+  return <nav className="admin-workspace-nav" aria-label="Admin workspace">{links.map(([label, href]) => { const active = location === href || (href !== (base || '/') && location.startsWith(`${href}/`)); return <Link key={label} href={href} className={`focus-ring ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined} data-testid={`link-admin-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</Link>; })}<button type="button" onClick={() => void signOut()} className="focus-ring admin-sign-out" data-testid="button-admin-sign-out">Sign out</button></nav>;
 }
 
 function CartDock() {
@@ -1127,9 +1184,12 @@ function Contact() { const [sent, setSent] = useState(false); return <Shell><Seo
 function ContactDetail({ icon: Icon, label, value, href }: { icon: IconType; label: string; value: string; href: string }) { return <a href={href} className="focus-ring flex items-start gap-4" data-testid={`link-contact-${label.toLowerCase()}`}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--accent))]"><Icon size={18} /></span><span><span className="mono-label block text-[9px] text-[hsl(var(--muted-foreground))]">{label}</span><span className="mt-1 block text-sm font-bold text-[hsl(var(--primary))]">{value}</span></span></a>; }
 function Field({ label, name, type = 'text', required = false }: { label: string; name: string; type?: string; required?: boolean }) { return <label className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}{required && <span className="ml-1 text-[hsl(var(--destructive))]">*</span>}<input name={name} type={type} required={required} className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" data-testid={`input-contact-${name}`} /></label>; }
 
-function Quote() {
+function LegacyQuote() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [quoteNumber, setQuoteNumber] = useState('');
   const [form, setForm] = useState({
     need: '',
     organisation: '',
@@ -1153,6 +1213,27 @@ function Quote() {
       ? !!form.organisation && !!form.industry && !!form.location && !!form.timeline
       : !!form.contactName && !!form.email && !!form.phone;
 
+  const submitRequest = async () => {
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'Your quote request could not be submitted.');
+      setQuoteNumber(result?.quoteNumber ?? '');
+      setSubmitted(true);
+    } catch (issue) {
+      setSubmitError(issue instanceof Error ? issue.message : 'Your quote request could not be submitted.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return <Shell><Seo page="contact" title="Request a Quote | NexHSE Africa" description="Tell NexHSE Africa what your organisation needs and start a practical conversation about workplace safety, training and environmental support." /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-16 pt-14 lg:px-8 lg:pb-20"><Breadcrumbs items={[['Request a quote', '/request-a-quote']]} /><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Three-step workflow</p><h1 className="display mt-5 max-w-3xl text-5xl leading-[1.02] tracking-[-.045em] sm:text-7xl">Start with the situation.<br /><em className="font-medium text-[hsl(var(--secondary))]">We’ll find the route.</em></h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">A concise qualification flow helps us understand your risk, service need and timing without the overload of a long enquiry form.</p></div></section><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">{submitted ? <div className="mx-auto max-w-xl rounded-2xl bg-[hsl(var(--secondary))] p-10 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[hsl(var(--accent))] text-white"><Check /></span><h2 className="display mt-6 text-4xl text-[hsl(var(--primary))]">Your request is ready for review.</h2><p className="mt-4 text-sm leading-6 text-[hsl(var(--muted-foreground))]">Thank you, {form.contactName || 'there'}. A NexHSE team member will follow up on the {form.need || 'service'} enquiry using the contact details provided.</p><Link href="/contact" className="focus-ring mt-7 inline-flex min-h-11 items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-5 text-xs font-bold text-white" data-testid="link-quote-done-contact">Back to contact <ArrowUpRight size={15} /></Link></div> : <div className="mx-auto max-w-3xl rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 sm:p-10"><div className="mb-12 grid grid-cols-3 gap-2 sm:grid-cols-3">{steps.map((s, i) => <div key={s} className={`${i + 1 <= step ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))]'}`}><div className={`h-1 rounded-full ${i + 1 <= step ? 'bg-[hsl(var(--accent))]' : 'bg-[hsl(var(--border))]'}`} /><span className="mt-3 block text-[10px] font-bold leading-4">{i + 1}. {s}</span></div>)}</div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Step {step} of 3</p>{step === 1 && <div><h2 className="display mt-4 text-4xl text-[hsl(var(--primary))]">What do you need?</h2><p className="mt-3 text-sm text-[hsl(var(--muted-foreground))]">Choose the service area or safety risk you want NexHSE to help with.</p><div className="mt-8 grid gap-3 sm:grid-cols-2">{services.slice(0, 8).map(service => <button key={service.slug} type="button" onClick={() => updateField('need', service.title)} className={`focus-ring min-h-16 rounded-xl border p-4 text-left text-sm font-bold ${form.need === service.title ? 'border-[hsl(var(--accent))] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-quote-need-${service.slug}`}>{service.title}</button>)}</div></div>}{step === 2 && <div><h2 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Tell us about your organisation.</h2><div className="mt-8 space-y-5">{[
           ['Organisation name', 'organisation'],
           ['Industry or operating context', 'industry'],
@@ -1163,6 +1244,10 @@ function Quote() {
           ['Work email', 'email'],
           ['Phone number', 'phone'],
         ].map(([label, field]) => <label key={label} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={form[field as keyof typeof form]} onChange={event => updateField(field as keyof typeof form, event.target.value)} className="focus-ring mt-2 min-h-12 w-full rounded-xl border border-[hsl(var(--input))] bg-transparent px-3 text-sm outline-none" data-testid={`input-quote-${label.toLowerCase().replaceAll(' ', '-')}`} /></label>)}</div><div className="mt-8 rounded-xl bg-[hsl(var(--secondary)/.7)] p-4 text-sm text-[hsl(var(--primary))]"><p><strong>Need:</strong> {form.need || 'Not specified yet'}</p><p className="mt-2"><strong>Organisation:</strong> {form.organisation || 'Not provided yet'}</p><p className="mt-2"><strong>Location:</strong> {form.location || 'Not provided yet'}</p></div></div>}<div className="mt-10 flex justify-between gap-3 border-t border-[hsl(var(--border))] pt-6"><button type="button" onClick={() => setStep(prev => Math.max(1, prev - 1))} className={`focus-ring min-h-11 rounded-full border border-[hsl(var(--border))] px-5 text-xs font-bold text-[hsl(var(--primary))] ${step === 1 ? 'invisible' : ''}`} data-testid="button-quote-back">Back</button>{step < 3 ? <button type="button" onClick={() => setStep(prev => Math.min(3, prev + 1))} disabled={!canContinue} className="focus-ring min-h-11 rounded-full bg-[hsl(var(--primary))] px-6 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-quote-next">Continue <ChevronRight size={14} className="ml-1 inline" /></button> : <button type="button" onClick={() => setSubmitted(true)} disabled={!canContinue} className="focus-ring min-h-11 rounded-full bg-[hsl(var(--accent))] px-6 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-quote-submit">Submit request <ArrowUpRight size={15} className="ml-1 inline" /></button>}</div></div>}</section></main></Shell>;
+}
+
+function Quote() {
+  return <Shell><Seo page="contact" title="Request a Quote | NexHSE Africa" description="Tell NexHSE Africa what your organisation needs and start a practical conversation about workplace safety, training and environmental support." /><Suspense fallback={<main className="mx-auto max-w-5xl px-5 py-14 text-sm text-[hsl(var(--muted-foreground))]">Loading quote form…</main>}><QuoteRequestForm /></Suspense></Shell>;
 }
 
 const baseShopProducts = [
@@ -1237,7 +1322,7 @@ function checkoutHref() {
 }
 
 function useShopCart() {
-  const [cart, setCart] = useSiteStore<Record<string, number>>('nexhse-shop-cart', {});
+  const [cart, setCart] = useSiteStore<Record<string, number>>('nexhse-shop-cart', emptyCart);
 
   const addToCart = (productName: string, quantity = 1) => setCart(prev => ({ ...prev, [productName]: (prev[productName] ?? 0) + quantity }));
   const removeFromCart = (productName: string) => setCart(prev => {
@@ -1250,7 +1335,7 @@ function useShopCart() {
 }
 
 function useShopOrders() {
-  const [orders, setOrders] = useSiteStore<ShopOrder[]>('nexhse-shop-orders', []);
+  const [orders, setOrders] = useSiteStore<ShopOrder[]>('nexhse-shop-orders', emptyOrders);
   const store = useContext(SiteStoreContext);
 
   useEffect(() => {
@@ -1279,7 +1364,7 @@ function useShopOrders() {
 }
 
 function useServiceTickets() {
-  const [tickets, setTickets] = useSiteStore<ServiceTicket[]>('nexhse-service-tickets', []);
+  const [tickets, setTickets] = useSiteStore<ServiceTicket[]>('nexhse-service-tickets', emptyTickets);
   useEffect(() => {
     void fetch('/api/admin-data?resource=tickets', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
       if (Array.isArray(result?.items) && result.items.length) setTickets(result.items);
@@ -1300,12 +1385,14 @@ function useServiceTickets() {
 
 function useShopProducts() {
   const [storedProducts, setStoredProducts] = useState<Partial<ShopProduct>[]>(shopProducts);
+  const [hiddenProductIds, setHiddenProductIds] = useState<string[]>([]);
   useEffect(() => {
     let active = true;
     const refresh = () => void fetch('/api/admin-data?resource=products', { cache: 'no-store' }).then(response => response.ok ? response.json() : null).then(result => {
-      if (active && Array.isArray(result?.items) && result.items.length) {
+      if (active && Array.isArray(result?.items)) {
         const isAdmin = window.location.hostname === 'admin.nexhse.co.ke' || window.location.pathname.startsWith('/admin');
         setStoredProducts(result.items.map((product: ShopProduct) => isAdmin ? { ...product, price: product.basePrice ?? product.price } : product));
+        setHiddenProductIds(Array.isArray(result.hiddenIds) ? result.hiddenIds : []);
       }
     }).catch(() => undefined);
     refresh();
@@ -1316,8 +1403,10 @@ function useShopProducts() {
   const products = useMemo(() => {
     const merged = shopProducts.map(defaultProduct => ({ ...defaultProduct, ...(storedProducts.find(product => (product.id && product.id === defaultProduct.id) || product.name === defaultProduct.name) ?? {}) }));
     const knownNames = new Set(shopProducts.map(product => product.name));
-    return [...merged, ...storedProducts.filter(product => typeof product.name === 'string' && !knownNames.has(product.name)) as ShopProduct[]].filter(product => product.active !== false);
-  }, [storedProducts]);
+    const hiddenIds = new Set(hiddenProductIds);
+    return [...merged, ...storedProducts.filter(product => typeof product.name === 'string' && !knownNames.has(product.name)) as ShopProduct[]]
+      .filter(product => product.active !== false && !hiddenIds.has(product.id ?? productSlug(product)));
+  }, [storedProducts, hiddenProductIds]);
   const saveProduct = async (product: ShopProduct) => {
     const normalized = { ...product, id: product.id ?? product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), sku: product.sku?.trim() || `NX-${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').toUpperCase()}` };
     const response = await fetch('/api/admin-data?resource=products', { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ product: normalized }) });
@@ -1325,15 +1414,20 @@ function useShopProducts() {
     if (!response.ok) throw new Error(result.error ?? 'Unable to save product');
     const saved = result.item ?? normalized;
     setStoredProducts(current => [...current.filter(item => item.id !== saved.id && item.name !== saved.name), saved]);
+    setHiddenProductIds(current => current.filter(id => id !== saved.id));
   };
   const updateProduct = async (name: string, changes: Partial<ShopProduct>) => {
     const current = products.find(product => product.name === name);
     if (current) await saveProduct({ ...current, ...changes });
   };
   const createProduct = (product: ShopProduct) => saveProduct(product);
-  const deleteProduct = (product: ShopProduct) => {
-    setStoredProducts(current => current.filter(item => item.id !== product.id && item.name !== product.name));
-    void fetch(`/api/admin-data?resource=products&id=${encodeURIComponent(product.id ?? product.name)}`, { method: 'DELETE', credentials: 'same-origin' }).catch(() => undefined);
+  const deleteProduct = async (product: ShopProduct) => {
+    const id = product.id ?? productSlug(product);
+    const response = await fetch(`/api/admin-data?resource=products&id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ product }) });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(result?.error ?? 'Unable to remove product');
+    setStoredProducts(current => [...current.filter(item => item.id !== id && item.name !== product.name), { ...product, id, active: false }]);
+    setHiddenProductIds(current => current.includes(id) ? current : [...current, id]);
   };
   return { products, updateProduct, createProduct, deleteProduct };
 }
@@ -1678,39 +1772,285 @@ function AdminProductCatalogue() {
   return <Shell><Seo page="home" title="Product Catalogue Admin | NexHSE Africa" description="Private product catalogue management view for the NexHSE Africa shop." /><main><PageIntro eyebrow="Private admin / shop" title="The live product catalogue." text="This view reads the same product records used by the public shop, keeping names, prices, images, categories and stock visibility aligned." image="/assets/shop/helmet.jpg" /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="mb-8 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} type="button" onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-admin-product-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-4 font-bold">Product</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Price</th><th className="p-4 font-bold">Stock</th><th className="p-4 font-bold">Public page</th></tr></thead><tbody>{products.map(product => <tr key={product.name} className="border-t border-[hsl(var(--border))]"><td className="flex items-center gap-3 p-4 font-semibold text-[hsl(var(--primary))]"><img src={product.image} alt="" className="h-12 w-12 rounded-lg object-cover" />{product.name}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.category}</td><td className="p-4 font-semibold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.stock}</td><td className="p-4"><Link href={productDetailHref(product)} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View product <ArrowUpRight size={14} className="ml-1 inline" /></Link></td></tr>)}</tbody></table></div></section></main></Shell>;
 }
 
-function AdminProductCrudPage({ products, updateProduct, createProduct, deleteProduct }: { products: ShopProduct[]; updateProduct: (name: string, changes: Partial<ShopProduct>) => Promise<void>; createProduct: (product: ShopProduct) => Promise<void>; deleteProduct: (product: ShopProduct) => void }) {
-  const [selectedName, setSelectedName] = useState(products[0]?.name ?? '');
+function AdminProductCrudPage({
+  products,
+  updateProduct,
+  createProduct,
+  deleteProduct,
+}: {
+  products: ShopProduct[];
+  updateProduct: (name: string, changes: Partial<ShopProduct>) => Promise<void>;
+  createProduct: (product: ShopProduct) => Promise<void>;
+  deleteProduct: (product: ShopProduct) => Promise<void>;
+}) {
+  const [selectedName, setSelectedName] = useState(products[0]?.name ?? "");
   const [form, setForm] = useState<ShopProduct | null>(products[0] ?? null);
   const [isNew, setIsNew] = useState(false);
-  const [notice, setNotice] = useState('');
-  useEffect(() => { if (!isNew) setForm(products.find(item => item.name === selectedName) ?? products[0] ?? null); }, [products, selectedName, isNew]);
-  const update = (field: keyof ShopProduct, value: string | number | string[]) => {
-    const normalized = typeof value === 'string' && field === 'keywords' ? value.split(',').map(item => item.trim()).filter(Boolean)
-      : typeof value === 'string' && ['features', 'useCases'].includes(field) ? value.split('\n').map(item => item.trim()).filter(Boolean)
-        : value;
-    setForm(current => current ? { ...current, [field]: normalized } : current);
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!isNew)
+      setForm(
+        products.find((item) => item.name === selectedName) ??
+          products[0] ??
+          null,
+      );
+  }, [products, selectedName, isNew]);
+  const update = (
+    field: keyof ShopProduct,
+    value: string | number | string[],
+  ) => {
+    const normalized =
+      typeof value === "string" && field === "keywords"
+        ? value
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : typeof value === "string" && ["features", "useCases"].includes(field)
+          ? value
+              .split("\n")
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : value;
+    setForm((current) =>
+      current ? { ...current, [field]: normalized } : current,
+    );
   };
   const add = () => {
     setIsNew(true);
-    setForm({ name: '', sku: '', category: 'PPE', price: 0, stock: 0, image: '', imageBackground: '#ffffff', description: '', longDescription: '', seoTitle: '', seoDescription: '', keywords: [], features: [], useCases: [], brand: 'NexHSE Africa', condition: 'New', active: true });
-    setNotice('');
+    setForm({
+      name: "",
+      sku: "",
+      category: "PPE",
+      price: 0,
+      stock: 0,
+      image: "",
+      imageBackground: "#ffffff",
+      description: "",
+      longDescription: "",
+      seoTitle: "",
+      seoDescription: "",
+      keywords: [],
+      features: [],
+      useCases: [],
+      brand: "NexHSE Africa",
+      condition: "New",
+      active: true,
+    });
+    setNotice("");
   };
   const save = async () => {
     if (!form) return;
-    const clean = { ...form, price: Number(form.price), stock: Number(form.stock) };
-    setNotice('Saving product…');
+    const clean = {
+      ...form,
+      price: Number(form.price),
+      stock: Number(form.stock),
+    };
+    setNotice("Saving product…");
     try {
-      if (isNew) await createProduct(clean); else await updateProduct(selectedName, clean);
+      if (isNew) await createProduct(clean);
+      else await updateProduct(selectedName, clean);
       setSelectedName(clean.name);
       setIsNew(false);
-      setNotice('Product saved to the live shop catalogue.');
+      setNotice("Product saved to the live shop catalogue.");
     } catch (issue) {
-      setNotice(issue instanceof Error ? issue.message : 'Unable to save product');
+      setNotice(
+        issue instanceof Error ? issue.message : "Unable to save product",
+      );
     }
   };
-  const fields: [keyof ShopProduct, string][] = [['name', 'Product name'], ['sku', 'SKU'], ['category', 'Category'], ['price', 'Price (KES)'], ['stock', 'Stock quantity'], ['image', 'Image URL'], ['imageBackground', 'Tile background'], ['brand', 'Brand'], ['condition', 'Condition'], ['seoTitle', 'SEO title'], ['seoDescription', 'SEO description']];
+  const remove = async () => {
+    if (!form) return;
+    setNotice("Removing product…");
+    try {
+      await deleteProduct(form);
+      const nextProduct = products.find((product) => product.name !== form.name);
+      if (nextProduct) {
+        setIsNew(false);
+        setSelectedName(nextProduct.name);
+        setForm(nextProduct);
+      } else {
+        setIsNew(true);
+        setForm({
+          name: "",
+          sku: "",
+          category: "PPE",
+          price: 0,
+          stock: 0,
+          image: "",
+          imageBackground: "#ffffff",
+          description: "",
+          longDescription: "",
+          seoTitle: "",
+          seoDescription: "",
+          keywords: [],
+          features: [],
+          useCases: [],
+          brand: "NexHSE Africa",
+          condition: "New",
+          active: true,
+        });
+      }
+      setNotice("Product removed from the live shop catalogue.");
+    } catch (issue) {
+      setNotice(issue instanceof Error ? issue.message : "Unable to remove product");
+    }
+  };
+  const fields: [keyof ShopProduct, string][] = [
+    ["name", "Product name"],
+    ["sku", "SKU"],
+    ["category", "Category"],
+    ["price", "Price (KES)"],
+    ["stock", "Stock quantity"],
+    ["image", "Image URL"],
+    ["imageBackground", "Tile background"],
+    ["brand", "Brand"],
+    ["condition", "Condition"],
+    ["seoTitle", "SEO title"],
+    ["seoDescription", "SEO description"],
+  ];
   if (!form) return null;
-  return <Shell><Seo page="home" title="Product catalogue | NexHSE Africa" description="Manage products, stock, merchandising and search metadata." /><main><PageIntro eyebrow="Private admin / shop" title="Maintain the live product catalogue." text="Manage product records, availability, merchandising copy and search metadata used by the public shop." image={form.image || '/assets/shop/helmet.jpg'} /><section className="mx-auto max-w-7xl px-5 py-14 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Products', '/admin/products' ]]} /><div className="grid gap-8 lg:grid-cols-[.65fr_1.35fr]"><aside><button type="button" onClick={add} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white">Add product</button><div className="mt-5 divide-y divide-[hsl(var(--border))]">{products.map(product => <button key={product.id ?? product.name} type="button" onClick={() => { setIsNew(false); setSelectedName(product.name); setNotice(''); }} className={`focus-ring block w-full py-3 text-left ${selectedName === product.name && !isNew ? 'font-bold text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}><span className="block text-sm">{product.name}</span><span className="mt-1 block text-xs">{product.category} · KSh {product.price.toLocaleString()} · {product.stock} in stock</span></button>)}</div></aside><section className="border-t border-[hsl(var(--border))] pt-5"><div className="grid gap-4 sm:grid-cols-2">{fields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input type={field === 'price' || field === 'stock' ? 'number' : 'text'} min={field === 'price' || field === 'stock' ? 0 : undefined} value={String(form[field] ?? '')} onChange={event => update(field, field === 'price' || field === 'stock' ? Number(event.target.value) : event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm" /></label>)}{[['description', 'Short description'], ['longDescription', 'Product details'], ['keywords', 'Search keywords (comma separated)'], ['features', 'Features (one per line)'], ['useCases', 'Use cases (one per line)']].map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">{label}<textarea value={Array.isArray(form[field as keyof ShopProduct]) ? (form[field as keyof ShopProduct] as string[]).join(field === 'keywords' ? ', ' : '\n') : String(form[field as keyof ShopProduct] ?? '')} onChange={event => update(field as keyof ShopProduct, event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label>)}</div><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={save} disabled={!form.name.trim() || !form.category.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Save product</button>{!isNew && <button type="button" onClick={() => { deleteProduct(form); setForm(null); setNotice('Product removed from the live shop catalogue.'); }} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">Delete product</button>}</div>{notice && <p role="status" className="mt-4 text-sm font-semibold text-[hsl(var(--accent))]">{notice}</p>}</section></div></section></main></Shell>;
+  return (
+    <Shell>
+      <Seo
+        page="home"
+        title="Product catalogue | NexHSE Africa"
+        description="Manage products, stock, merchandising and search metadata."
+      />
+      <main>
+        <PageIntro
+          eyebrow="Private admin / shop"
+          title="Maintain the live product catalogue."
+          text="Manage product records, availability, merchandising copy and search metadata used by the public shop."
+          image={form.image || "/assets/shop/helmet.jpg"}
+        />
+        <section className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
+          <Breadcrumbs
+            items={[
+              ["Admin", "/admin"],
+              ["Products", "/admin/products"],
+            ]}
+          />
+          <div className="grid gap-8 lg:grid-cols-[.65fr_1.35fr]">
+            <aside>
+              <button
+                type="button"
+                onClick={add}
+                className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white"
+              >
+                Add product
+              </button>
+              <div className="mt-5 divide-y divide-[hsl(var(--border))]">
+                {products.map((product) => (
+                  <button
+                    key={product.id ?? product.name}
+                    type="button"
+                    onClick={() => {
+                      setIsNew(false);
+                      setSelectedName(product.name);
+                      setNotice("");
+                    }}
+                    className={`focus-ring block w-full py-3 text-left ${selectedName === product.name && !isNew ? "font-bold text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
+                  >
+                    <span className="block text-sm">{product.name}</span>
+                    <span className="mt-1 block text-xs">
+                      {product.category} · KSh {product.price.toLocaleString()}{" "}
+                      · {product.stock} in stock
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </aside>
+            <section className="border-t border-[hsl(var(--border))] pt-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {fields.map(([field, label]) => (
+                  <label
+                    key={field}
+                    className="block text-sm font-semibold text-[hsl(var(--primary))]"
+                  >
+                    {label}
+                    <input
+                      type={
+                        field === "price" || field === "stock"
+                          ? "number"
+                          : "text"
+                      }
+                      min={
+                        field === "price" || field === "stock" ? 0 : undefined
+                      }
+                      value={String(form[field] ?? "")}
+                      onChange={(event) =>
+                        update(
+                          field,
+                          field === "price" || field === "stock"
+                            ? Number(event.target.value)
+                            : event.target.value,
+                        )
+                      }
+                      className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm"
+                    />
+                  </label>
+                ))}
+                {[
+                  ["description", "Short description"],
+                  ["longDescription", "Product details"],
+                  ["keywords", "Search keywords (comma separated)"],
+                  ["features", "Features (one per line)"],
+                  ["useCases", "Use cases (one per line)"],
+                ].map(([field, label]) => (
+                  <label
+                    key={field}
+                    className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2"
+                  >
+                    {label}
+                    <textarea
+                      value={
+                        Array.isArray(form[field as keyof ShopProduct])
+                          ? (form[field as keyof ShopProduct] as string[]).join(
+                              field === "keywords" ? ", " : "\n",
+                            )
+                          : String(form[field as keyof ShopProduct] ?? "")
+                      }
+                      onChange={(event) =>
+                        update(field as keyof ShopProduct, event.target.value)
+                      }
+                      className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={!form.name.trim() || !form.category.trim()}
+                  className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40"
+                >
+                  Save product
+                </button>
+                {!isNew && (
+                  <button
+                    type="button"
+                    onClick={() => void remove()}
+                    className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold"
+                  >
+                    Delete product
+                  </button>
+                )}
+              </div>
+              {notice && (
+                <p
+                  role="status"
+                  className="mt-4 text-sm font-semibold text-[hsl(var(--accent))]"
+                >
+                  {notice}
+                </p>
+              )}
+            </section>
+          </div>
+        </section>
+      </main>
+    </Shell>
+  );
 }
 
 function LegacyAdminDashboard() {
@@ -1749,15 +2089,23 @@ function AdminDashboard() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   useEffect(() => {
-    const timer = window.setInterval(() => setLastRefresh(new Date()), 30000);
-    void Promise.all([
-      fetch('/api/admin-data?resource=clients', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null),
-      fetch('/api/admin-data?resource=promotions', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null),
-    ]).then(([clients, promotions]) => {
-      if (Array.isArray(clients?.items)) setClientCount(clients.items.length);
-      if (Array.isArray(promotions?.items)) setPromotionCount(promotions.items.length);
-    }).catch(() => undefined);
-    return () => window.clearInterval(timer);
+    let active = true;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      void Promise.all([
+        fetch('/api/admin-data?resource=clients', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null),
+        fetch('/api/admin-data?resource=promotions', { credentials: 'same-origin', cache: 'no-store' }).then(response => response.ok ? response.json() : null),
+      ]).then(([clients, promotions]) => {
+        if (!active) return;
+        if (Array.isArray(clients?.items)) setClientCount(clients.items.length);
+        if (Array.isArray(promotions?.items)) setPromotionCount(promotions.items.length);
+        setLastRefresh(new Date());
+      }).catch(() => undefined);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, []);
 
   const metrics = [
@@ -2087,15 +2435,16 @@ function AdminUsersPage() {
 
 function AdminWorkspaceRoute() {
   const [location] = useLocation();
-  const isAdminHost = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke';
-  const path = isAdminHost ? location : location.replace(/^\/admin(?=\/|$)/, '') || '/';
-  const page = path === '/' ? <AdminDashboard /> : path === '/products' ? <AdminProductCatalogue /> : path === '/promotions' ? <AdminPromotionsPage /> : path === '/services' ? <AdminServicesPage /> : path === '/blog' ? <AdminBlogManager /> : path === '/orders' ? <AdminOrdersPage /> : path === '/customers' ? <AdminCustomersPage /> : path === '/service' ? <AdminServiceDeskPage /> : path === '/users' ? <AdminUsersPage /> : <NotFound />;
-  const ownerOnly = ['/products', '/promotions', '/services', '/blog', '/users'].includes(path);
-  return <AdminAccessGate ownerOnly={ownerOnly}>{page}</AdminAccessGate>;
+  const path = location.split(/[?#]/, 1)[0].replace(/\/+$/, '').replace(/^\/admin(?=\/|$)/, '') || '/';
+  const page = path === '/' ? <AdminDashboard /> : path === '/quotes' ? <Shell><AdminQuotesPage /></Shell> : path === '/invoices' ? <Shell><AdminInvoicesPage /></Shell> : path === '/products' ? <AdminProductCatalogue /> : path === '/promotions' ? <AdminPromotionsPage /> : path === '/services' ? <AdminServicesPage /> : path === '/blog' ? <AdminBlogManager /> : path === '/orders' ? <AdminOrdersPage /> : path === '/customers' ? <AdminCustomersPage /> : path === '/service' ? <AdminServiceDeskPage /> : path === '/users' ? <AdminUsersPage /> : <NotFound />;
+  const ownerOnly = ['/quotes', '/invoices', '/products', '/promotions', '/services', '/blog', '/users'].includes(path);
+  return <AdminAccessGate ownerOnly={ownerOnly}><Suspense fallback={<main className="mx-auto max-w-7xl px-5 py-12 text-sm text-[hsl(var(--muted-foreground))]">Loading workspace…</main>}>{page}</Suspense></AdminAccessGate>;
 }
 
 function AppRouter() {
   const hostname = window.location.hostname.toLowerCase();
+
+  if (hostname !== 'admin.nexhse.co.ke' && window.location.pathname.startsWith('/admin/') && window.location.pathname !== '/admin/accept-invite') return <AdminWorkspaceRoute />;
 
   if (hostname === 'shop.nexhse.co.ke') {
     return <Switch><Route path="/" component={Shop} /><Route path="/cart" component={CartPage} /><Route path="/checkout" component={ShopCheckout} /><Route path="/contact" component={PublicSiteRedirect} /><Route path="/request-a-quote" component={PublicSiteRedirect} /><Route path="/shop" component={Shop} /><Route path="/shop/cart" component={CartPage} /><Route path="/shop/checkout" component={ShopCheckout} /><Route path="/shop/:slug" component={ProductDetail} /><Route path="/:slug" component={ProductDetail} /><Route component={NotFound} /></Switch>;

@@ -37,6 +37,12 @@ For production, apply the reviewed additive SQL migration rather than using the 
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/migrations/0001_payment_provider_columns.sql
 ```
 
+Apply the CRM quotation and invoice tables before deploying the sales workspace:
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f lib/db/migrations/0002_crm_quotes_invoices.sql
+```
+
 Then link the Supabase CLI to the intended project, set its runtime secrets, and deploy the function:
 
 ```sh

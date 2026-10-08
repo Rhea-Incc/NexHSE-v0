@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, max, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import * as schema from './schema/index.js';
@@ -255,6 +255,30 @@ export async function listClientsForUser(userId: string, isOwner = false) {
   return isOwner ? query : query.where(eq(schema.clientsTable.createdBy, userId));
 }
 
+export async function listClientsWithOrderSummary(userId: string, isOwner = false) {
+  const db = getDatabase();
+  const query = db.select({
+    id: schema.clientsTable.id,
+    email: schema.clientsTable.email,
+    name: schema.clientsTable.name,
+    phone: schema.clientsTable.phone,
+    company: schema.clientsTable.company,
+    industry: schema.clientsTable.industry,
+    location: schema.clientsTable.location,
+    notes: schema.clientsTable.notes,
+    createdBy: schema.clientsTable.createdBy,
+    createdAt: schema.clientsTable.createdAt,
+    orderCount: sql<number>`count(${schema.shopOrdersTable.id})::int`,
+    spend: sql<number>`coalesce(sum(${schema.shopOrdersTable.total}), 0)::int`,
+    lastOrder: max(schema.shopOrdersTable.createdAt),
+  }).from(schema.clientsTable)
+    .leftJoin(schema.shopOrdersTable, sql`lower(${schema.shopOrdersTable.email}) = lower(${schema.clientsTable.email})`);
+
+  return isOwner
+    ? query.groupBy(schema.clientsTable.id).orderBy(desc(schema.clientsTable.createdAt))
+    : query.where(eq(schema.clientsTable.createdBy, userId)).groupBy(schema.clientsTable.id).orderBy(desc(schema.clientsTable.createdAt));
+}
+
 export async function seedClientsFromOrders(clients: typeof schema.clientsTable.$inferInsert[]) {
   if (!clients.length) return;
   await getDatabase().insert(schema.clientsTable).values(clients).onConflictDoNothing();
@@ -281,6 +305,53 @@ export async function upsertClient(client: typeof schema.clientsTable.$inferInse
 
 export async function updateClient(id: string, changes: Partial<typeof schema.clientsTable.$inferInsert>) {
   await getDatabase().update(schema.clientsTable).set({ ...changes, updatedAt: new Date() }).where(eq(schema.clientsTable.id, id));
+}
+
+export async function listQuotesForUser(userId: string, isOwner = false) {
+  const db = getDatabase();
+  const query = db.select().from(schema.quotesTable).orderBy(desc(schema.quotesTable.createdAt));
+  return isOwner ? query : query.where(eq(schema.quotesTable.createdBy, userId));
+}
+
+export async function findQuoteById(id: string) {
+  const [quote] = await getDatabase().select().from(schema.quotesTable).where(eq(schema.quotesTable.id, id)).limit(1);
+  return quote ?? null;
+}
+
+export async function createQuote(quote: typeof schema.quotesTable.$inferInsert) {
+  await getDatabase().insert(schema.quotesTable).values(quote);
+  return findQuoteById(quote.id);
+}
+
+export async function updateQuote(id: string, changes: Partial<typeof schema.quotesTable.$inferInsert>) {
+  await getDatabase().update(schema.quotesTable).set({ ...changes, updatedAt: new Date() }).where(eq(schema.quotesTable.id, id));
+  return findQuoteById(id);
+}
+
+export async function listInvoicesForUser(userId: string, isOwner = false) {
+  const db = getDatabase();
+  const query = db.select().from(schema.invoicesTable).orderBy(desc(schema.invoicesTable.createdAt));
+  return isOwner ? query : query.where(eq(schema.invoicesTable.createdBy, userId));
+}
+
+export async function findInvoiceById(id: string) {
+  const [invoice] = await getDatabase().select().from(schema.invoicesTable).where(eq(schema.invoicesTable.id, id)).limit(1);
+  return invoice ?? null;
+}
+
+export async function createInvoice(invoice: typeof schema.invoicesTable.$inferInsert) {
+  await getDatabase().insert(schema.invoicesTable).values(invoice);
+  return findInvoiceById(invoice.id);
+}
+
+export async function findInvoiceByQuoteId(quoteId: string) {
+  const [invoice] = await getDatabase().select().from(schema.invoicesTable).where(eq(schema.invoicesTable.quoteId, quoteId)).limit(1);
+  return invoice ?? null;
+}
+
+export async function updateInvoice(id: string, changes: Partial<typeof schema.invoicesTable.$inferInsert>) {
+  await getDatabase().update(schema.invoicesTable).set({ ...changes, updatedAt: new Date() }).where(eq(schema.invoicesTable.id, id));
+  return findInvoiceById(id);
 }
 
 export async function listShopPromotions() {
