@@ -136,6 +136,6 @@ export default async function handler(req: any, res: any) {
     console.error('site-store API failed', error);
     if (error && typeof error === 'object' && 'statusCode' in error) return res.status(Number(error.statusCode)).json({ error: error instanceof Error ? error.message : 'Order failed' });
     if (error instanceof Error && error.message === 'PROMOTION_UNAVAILABLE') return res.status(409).json({ error: 'Promotion limit was reached. Please refresh your basket.' });
-    return res.status(process.env.DATABASE_URL ? 500 : 503).json({ error: 'Shared persistence is unavailable' });
+    return res.status(process.env.DATABASE_URL || process.env.v0_DATABASE_URL || process.env.nexhsevo_DATABASE_URL ? 500 : 503).json({ error: 'Shared persistence is unavailable' });
   }
 }

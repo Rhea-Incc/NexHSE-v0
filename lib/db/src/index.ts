@@ -9,7 +9,7 @@ const { Pool } = pg;
 let database: ReturnType<typeof drizzle> | undefined;
 
 function resolveDatabaseUrl() {
-  return process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING ?? null;
+  return process.env.DATABASE_URL ?? process.env.v0_DATABASE_URL ?? process.env.nexhsevo_DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.v0_POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING ?? null;
 }
 
 export function getDatabase() {

@@ -1,4 +1,4 @@
-import { clearAdminSessionCookie, getActiveAdminSession, isTrustedOrigin, setAdminSessionCookie, verifyAdminKey, verifyAdminPassword, verifyHashedAdminPassword } from '../lib/api/admin-session';
+import { clearAdminSessionCookie, getActiveAdminSession, getAdminEnv, isTrustedOrigin, setAdminSessionCookie, verifyAdminKey, verifyAdminPassword, verifyHashedAdminPassword } from '../lib/api/admin-session';
 import { findAdminUserByEmail } from '@workspace/db';
 import { createSupabaseAuthClient, isSupabaseAuthConfigured, provisionSupabaseAdminUser } from '../lib/api/supabase';
 
@@ -20,14 +20,14 @@ export default async function handler(req: any, res: any) {
   const password = req.body?.password ?? req.body?.credential ?? req.body?.key;
 
   if (email && typeof password === 'string') {
-    const ownerEmail = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();
+    const ownerEmail = getAdminEnv('ADMIN_EMAIL').trim().toLowerCase();
     if (ownerEmail && email === ownerEmail && verifyAdminPassword(password)) {
       const owner = { userId: 'owner', email: ownerEmail, role: 'owner' };
       setAdminSessionCookie(res, owner);
       return res.status(200).json({ authenticated: true, user: { id: owner.userId, email: owner.email, role: owner.role } });
     }
 
-    const supabaseMode = process.env.SUPABASE_AUTH_MODE ?? 'hybrid';
+    const supabaseMode = getAdminEnv('SUPABASE_AUTH_MODE') || 'hybrid';
     if (supabaseMode !== 'legacy' && isSupabaseAuthConfigured()) {
       try {
         const authClient: any = createSupabaseAuthClient();
@@ -69,9 +69,9 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json({ authenticated: true, user: { id: user.id, email: user.email, role: user.role } });
   }
 
-  if (!process.env.ADMIN_API_KEY && !process.env.ADMIN_PASSWORD) return res.status(503).json({ error: 'Admin access is not configured' });
+  if (!getAdminEnv('ADMIN_API_KEY') && !getAdminEnv('ADMIN_PASSWORD')) return res.status(503).json({ error: 'Admin access is not configured' });
   if (!verifyAdminKey(password) && !verifyAdminPassword(password)) return res.status(401).json({ error: 'Invalid admin credential' });
-  const owner = { userId: 'owner', email: process.env.ADMIN_EMAIL ?? 'owner', role: 'owner' };
+  const owner = { userId: 'owner', email: getAdminEnv('ADMIN_EMAIL') || 'owner', role: 'owner' };
   setAdminSessionCookie(res, owner);
   return res.status(200).json({ authenticated: true, user: { id: owner.userId, email: owner.email, role: owner.role } });
   } catch (error) {

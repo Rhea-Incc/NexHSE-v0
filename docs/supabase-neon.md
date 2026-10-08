@@ -10,7 +10,7 @@ After active admins have signed in and been provisioned, set `SUPABASE_AUTH_MODE
 
 ## Environment
 
-Set these standard variable names in Vercel and local development. The Node API also accepts the existing `nexhsevo_`-prefixed aliases from `.env.local`.
+Set these standard variable names in Vercel and local development. The Node API accepts the standard names plus `v0_` and legacy `nexhsevo_`-prefixed aliases.
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
@@ -18,6 +18,8 @@ Set these standard variable names in Vercel and local development. The Node API 
 - `SUPABASE_AUTH_MODE` (`hybrid`, `required`, or `legacy`)
 - `DATABASE_URL` (Neon pooled connection URL)
 - `SITE_ALLOWED_ORIGINS` when adding custom web origins
+
+Admin login also uses `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` for the owner account/session signing. `ADMIN_API_KEY` is an alternative owner credential. These values and the Neon connection string may use the same `v0_` or `nexhsevo_` prefix.
 
 The Supabase Edge Function receives `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL`, and optionally `SITE_ALLOWED_ORIGINS` from Supabase project secrets/runtime configuration. It does not need the service-role key: requests require a verified Supabase user token, and data is read from Neon through the restricted order-history query.
 

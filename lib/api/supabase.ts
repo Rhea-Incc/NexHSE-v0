@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const projectPrefix = 'nexhsevo_';
 
 function envValue(name: string) {
-  const value = process.env[name] ?? process.env[`${projectPrefix}${name}`] ?? '';
+  const value = process.env[name] ?? process.env[`v0_${name}`] ?? process.env[`${projectPrefix}${name}`] ?? '';
   return value.trim().replace(/^['"]|['"]$/g, '');
 }
 
@@ -64,5 +64,5 @@ export async function provisionSupabaseAdminUser(user: { email: string; password
 }
 
 export function getNeonConnectionString() {
-  return process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING ?? '';
+  return process.env.DATABASE_URL ?? process.env.v0_DATABASE_URL ?? process.env.nexhsevo_DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.v0_POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING ?? '';
 }
