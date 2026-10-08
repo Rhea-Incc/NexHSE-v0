@@ -1024,6 +1024,7 @@ function ServiceCard({ service, compact = false }: { service: Service; compact?:
 function ServiceMediaSlideshow({ service, className }: { service: Service; className: string }) {
   const slides = useMemo(() => getServiceMediaSlides(service), [service.image, service.slug, service.title, service.type]);
   const [current, setCurrent] = useState(0);
+  const [previous, setPrevious] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const frame = useRef<HTMLDivElement>(null);
 
@@ -1042,17 +1043,43 @@ function ServiceMediaSlideshow({ service, className }: { service: Service; class
 
   useEffect(() => {
     if (!isVisible || slides.length < 2) return;
-    const timer = window.setInterval(() => setCurrent(index => (index + 1) % slides.length), 6500);
-    return () => window.clearInterval(timer);
-  }, [isVisible, slides.length]);
+    const timer = window.setTimeout(() => {
+      setPrevious(current);
+      setCurrent((current + 1) % slides.length);
+    }, 6500);
+    return () => window.clearTimeout(timer);
+  }, [current, isVisible, slides.length]);
+
+  useEffect(() => {
+    if (previous === null) return;
+    const timer = window.setTimeout(() => {
+      setPrevious(active => active === previous ? null : active);
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [previous]);
+
+  useEffect(() => {
+    if (!isVisible || slides.length < 2) return;
+    const nextSlide = slides[(current + 1) % slides.length];
+    if (nextSlide && !nextSlide.image.toLowerCase().endsWith('.mp4')) {
+      const preload = new Image();
+      preload.src = nextSlide.image;
+    }
+  }, [current, isVisible, slides]);
 
   const activeSlide = slides[current];
   if (!activeSlide) return null;
-  const isVideo = activeSlide.image.toLowerCase().endsWith('.mp4');
+  const visibleSlides = previous === null ? [current] : [previous, current];
   return <div ref={frame} className={className} role="region" aria-roledescription="carousel" aria-label={`${service.title} images`} data-testid={`slideshow-service-${service.slug}`}>
-    {isVideo
-      ? <video key={activeSlide.image} src={activeSlide.image} autoPlay muted loop playsInline preload="none" aria-label={activeSlide.alt} className="absolute inset-0 h-full w-full object-cover" />
-      : <img key={activeSlide.image} src={activeSlide.image} alt={activeSlide.alt} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />}
+    {visibleSlides.map(index => {
+      const slide = slides[index];
+      const isActive = index === current;
+      const isVideo = slide.image.toLowerCase().endsWith('.mp4');
+      const mediaClassName = `service-media-slide absolute inset-0 h-full w-full object-cover ${isActive ? 'is-active' : ''}`;
+      return isVideo
+        ? <video key={slide.image} src={slide.image} autoPlay={isActive} muted loop playsInline preload={isActive ? 'auto' : 'none'} aria-label={isActive ? slide.alt : undefined} aria-hidden={!isActive} className={mediaClassName} />
+        : <img key={slide.image} src={slide.image} alt={isActive ? slide.alt : ''} aria-hidden={!isActive} loading="eager" decoding="async" className={mediaClassName} />;
+    })}
     <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.82)] via-[hsl(var(--primary)/.22)] to-transparent" />
     <span className="absolute bottom-4 left-5 right-5 mono-label text-[10px] text-white">{service.title}</span>
   </div>;
