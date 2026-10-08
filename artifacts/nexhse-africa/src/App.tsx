@@ -1,7 +1,8 @@
-import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
+import { getServiceMediaSlides, workAtHeightImages } from '@/lib/service-media';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ArrowUpRight, Award, BriefcaseBusiness, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Clock3, Download, FileText, Flame, HardHat, HeartPulse, Leaf, Mail, MapPin, Phone, Search, ShieldCheck, ShoppingCart, Siren, Sparkles, Target, Users } from 'lucide-react';
@@ -42,6 +43,10 @@ const socialLinks = [
   { label: 'Find NexHSE Africa on LinkedIn', href: 'https://www.linkedin.com/search/results/companies/?keywords=NexHSE%20Africa', icon: FaLinkedinIn, testId: 'link-footer-linkedin' },
   { label: 'Open NexHSE Africa on Google Business', href: 'https://www.google.com/maps/search/?api=1&query=NexHSE%20Africa%2C%20Nairobi', icon: FaGoogle, testId: 'link-footer-google-business' },
 ];
+
+function slideshowWindow(current: number, length: number) {
+  return new Set([current, (current + 1) % length, (current + length - 1) % length]);
+}
 
 type IconType = typeof ShieldCheck;
 type Service = { id?: string; slug: string; number: string; title: string; short: string; outcome: string; type: string; icon: IconType; image: string; group: string; active?: boolean };
@@ -370,6 +375,7 @@ function FooterMap() {
 
 function FooterSlideshow() {
   const [current, setCurrent] = useState(0);
+  const visibleSlides = slideshowWindow(current, footerSlides.length);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -379,7 +385,7 @@ function FooterSlideshow() {
   }, []);
 
   return <div className="footer-slideshow" aria-hidden="true">
-    {heroSlides.map((slide, index) => <img key={slide.label} src={slide.image} alt="" className={`footer-slideshow-image ${index === current ? 'is-active' : ''}`} />)}
+    {footerSlides.map((slide, index) => visibleSlides.has(index) ? <img key={slide.label} src={slide.image} alt="" loading="lazy" decoding="async" className={`footer-slideshow-image ${index === current ? 'is-active' : ''}`} /> : null)}
     <div className="footer-slideshow-blur" />
     <div className="footer-slideshow-wash" />
   </div>;
@@ -387,6 +393,7 @@ function FooterSlideshow() {
 
 function MobileNavSlideshow() {
   const [current, setCurrent] = useState(0);
+  const visibleSlides = slideshowWindow(current, footerSlides.length);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -396,7 +403,7 @@ function MobileNavSlideshow() {
   }, []);
 
   return <div className="mobile-nav-slideshow" aria-hidden="true">
-    {heroSlides.map((slide, index) => <img key={slide.label} src={slide.image} alt="" className={`mobile-nav-slideshow-image ${index === current ? 'is-active' : ''}`} />)}
+    {footerSlides.map((slide, index) => visibleSlides.has(index) ? <img key={slide.label} src={slide.image} alt="" loading="lazy" decoding="async" className={`mobile-nav-slideshow-image ${index === current ? 'is-active' : ''}`} /> : null)}
     <div className="mobile-nav-slideshow-wash" />
   </div>;
 }
@@ -809,19 +816,35 @@ function OrganicSlideshow({ slides, className, variant = 'quiet', label }: { sli
     '--organic-before-radius': borders[current].back,
     '--organic-after-radius': borders[current].outline,
   } as CSSProperties;
+  const visibleSlides = slideshowWindow(current, slides.length);
 
   return <div className={`organic-slideshow ${className}`} role="region" aria-roledescription="carousel" aria-label={label} data-testid={`slideshow-${label.toLowerCase().replaceAll(' ', '-')}`}>
     <div className={`organic-image organic-image--${variant} organic-slideshow-frame`} style={style}>
-      {slides.map((slide, index) => <img key={slide.image} src={slide.image} alt={index === current ? slide.alt : ''} aria-hidden={index !== current} loading="lazy" className={`organic-slideshow-image ${index === current ? 'is-active' : ''}`} />)}
+      {slides.map((slide, index) => visibleSlides.has(index) ? <img key={slide.image} src={slide.image} alt={index === current ? slide.alt : ''} aria-hidden={index !== current} loading="lazy" decoding="async" className={`organic-slideshow-image ${index === current ? 'is-active' : ''}`} /> : null)}
     </div>
   </div>;
 }
 
 const heroSlides = [
-  { image: heroImage, alt: 'Safety professionals in protective equipment during a practical construction-site training session', label: 'FIELD PRACTICE', caption: 'Learning where the work happens.' },
-  { image: siteTrainingImage, alt: 'Workers learning safety practice in an active operational environment', label: 'BUILD CAPABILITY', caption: 'Knowledge that travels back to the workplace.' },
-  { image: environmentalImage, alt: 'Environmental management and field practice in a natural workplace setting', label: 'CONTROL EXPOSURE', caption: 'Practical decisions for changing conditions.' },
-  { image: fireImage, alt: 'Two workplace trainees operating a fire extinguisher during a practical exercise', label: 'PREPARE TO RESPOND', caption: 'Calm response starts before the emergency.' },
+  { image: '/assets/slide-01.jpeg', alt: 'NexHSE Africa workplace safety practice', label: 'FIELD PRACTICE 01', caption: 'Learning where the work happens.' },
+  { image: '/assets/slide-02.jpeg', alt: 'NexHSE Africa safety training and field work', label: 'BUILD CAPABILITY 01', caption: 'Knowledge that travels back to the workplace.' },
+  { image: '/assets/slide-033.jpeg', alt: 'NexHSE Africa environmental and workplace safety services', label: 'CONTROL EXPOSURE 01', caption: 'Practical decisions for changing conditions.' },
+  { image: '/assets/slide-04.jpeg', alt: 'NexHSE Africa safety professionals at work', label: 'PREPARE TO RESPOND 01', caption: 'Calm response starts before the emergency.' },
+  { image: '/assets/slide-05.jpeg', alt: 'NexHSE Africa practical safety services', label: 'SAFER WORKPLACES 01', caption: 'Protect people and strengthen operations.' },
+  { image: heroImage, alt: 'Safety professionals in protective equipment during a practical construction-site training session', label: 'FIELD PRACTICE 02', caption: 'Learning where the work happens.' },
+  { image: siteTrainingImage, alt: 'Workers learning safety practice in an active operational environment', label: 'BUILD CAPABILITY 02', caption: 'Knowledge that travels back to the workplace.' },
+  { image: environmentalImage, alt: 'Environmental management and field practice in a natural workplace setting', label: 'CONTROL EXPOSURE 02', caption: 'Practical decisions for changing conditions.' },
+  { image: fireImage, alt: 'Two workplace trainees operating a fire extinguisher during a practical exercise', label: 'PREPARE TO RESPOND 02', caption: 'Calm response starts before the emergency.' },
+];
+
+const footerSlides = [
+  ...heroSlides,
+  ...workAtHeightImages.map((image, index) => ({
+    image,
+    alt: `NexHSE work-at-height practice, image ${index + 1}`,
+    label: `WORK AT HEIGHT ${String(index + 1).padStart(2, '0')}`,
+    caption: 'High-risk work controlled through practical competence.',
+  })),
 ];
 
 const trainingDevelopmentSlides = [
@@ -830,6 +853,7 @@ const trainingDevelopmentSlides = [
   { image: firstAidImage, alt: 'First-aid training equipment prepared for practical instruction' },
   { image: heightsImage, alt: 'Work-at-height safety equipment used for training' },
   { image: fieldImage, alt: 'Safety training and field practice in an active workplace' },
+  ...workAtHeightImages.map((image, index) => ({ image, alt: `Work-at-height training and fall protection practice, image ${index + 1}` })),
 ];
 
 const conversationSlides = [
@@ -837,6 +861,7 @@ const conversationSlides = [
   { image: heroImage, alt: 'Safety professionals in protective equipment during site training' },
   { image: fireImage, alt: 'Workplace trainees practising a fire response' },
   { image: environmentalImage, alt: 'Environmental management in a working landscape' },
+  ...workAtHeightImages.map((image, index) => ({ image, alt: `Work-at-height safety practice, image ${index + 1}` })),
 ];
 
 function HeroSlideshow() {
@@ -862,6 +887,7 @@ function HeroSlideshow() {
   const goTo = (index: number) => setCurrent((index + heroSlides.length) % heroSlides.length);
   const goPrevious = () => goTo(current - 1);
   const goNext = () => goTo(current + 1);
+  const visibleSlides = slideshowWindow(current, heroSlides.length);
 
   return <div
     className="absolute inset-0 z-0 overflow-hidden"
@@ -884,13 +910,15 @@ function HeroSlideshow() {
       touchStart.current = null;
     }}
   >
-    {heroSlides.map((slide, index) => <img
+    {heroSlides.map((slide, index) => visibleSlides.has(index) ? <img
       key={slide.label}
       src={slide.image}
       alt={index === current ? slide.alt : ''}
       aria-hidden={index !== current}
+      loading={index === 0 ? 'eager' : 'lazy'}
+      decoding="async"
       className={`hero-slide-image absolute inset-0 h-full w-full object-cover object-center ${index === current ? 'scale-100 opacity-55' : 'scale-105 opacity-0'}`}
-    />)}
+    /> : null)}
     <div className="organic-wash" />
     <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4 lg:bottom-8 lg:left-auto lg:right-8 lg:w-[330px]">
       <div aria-live="polite">
@@ -923,8 +951,8 @@ function PageHeroSlideshow({ image, alt }: { image: string; alt: string }) {
   return <div className={`page-hero-slideshow page-hero-slideshow--${current}`} aria-live="polite"><div className="page-hero-slideshow-outline" aria-hidden="true" />{slides.map((slide, index) => <img key={`${slide.image}-${index}`} src={slide.image} alt={index === current ? slide.alt : ''} aria-hidden={index !== current} className={`page-hero-slide ${index === current ? 'is-active' : ''}`} />)}<div className="page-hero-slideshow-dots" aria-hidden="true">{slides.map((slide, index) => <span key={slide.image} className={index === current ? 'is-active' : ''} />)}</div></div>;
 }
 
-function PageIntro({ eyebrow, title, text, image, hideFieldLabel = eyebrow === 'Safety and Growth' || eyebrow === 'SERVICE PORTFOLIO' }: { eyebrow: string; title: string; text: string; image?: string; hideFieldLabel?: boolean }) {
-  return <><section className="relative overflow-hidden bg-[hsl(var(--primary))] text-white"><OrganicBackdrop dark /><div className="relative mx-auto grid max-w-7xl items-end gap-10 px-5 pb-16 pt-14 lg:grid-cols-[1fr_1fr] lg:px-8 lg:pb-20 lg:pt-20"><div className="reveal"><p className="mono-label mb-5 text-[10px] text-[hsl(var(--secondary))]">{eyebrow}</p><h1 className="display max-w-3xl text-5xl leading-[1.02] tracking-[-.045em] sm:text-6xl">{title}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{text}</p></div>{image && <PageHeroSlideshow image={image} alt="NexHSE professionals learning and applying workplace safety practice" />}{!hideFieldLabel && <span className="absolute bottom-5 left-5 mono-label text-[9px] text-white/75 lg:bottom-7 lg:left-auto lg:right-8">FIELD / PRACTICE / PEOPLE</span>}</div><div className="pointer-events-none absolute -right-24 -top-40 h-96 w-96 rounded-full border border-[hsl(var(--accent)/.3)]" /></section><div className="hero-linework" aria-hidden="true"><span /><span /><span /><i /><i /></div>{eyebrow === 'Contact NexHSE Africa' && <div className="head-office-map-wrap"><HeadOfficeMap /></div>}</>;
+function PageIntro({ eyebrow, title, text, image, service, hideFieldLabel = eyebrow === 'Safety and Growth' || eyebrow === 'SERVICE PORTFOLIO' }: { eyebrow: string; title: string; text: string; image?: string; service?: Service; hideFieldLabel?: boolean }) {
+  return <><section className="relative overflow-hidden bg-[hsl(var(--primary))] text-white"><OrganicBackdrop dark /><div className="relative mx-auto grid max-w-7xl items-end gap-10 px-5 pb-16 pt-14 lg:grid-cols-[1fr_1fr] lg:px-8 lg:pb-20 lg:pt-20"><div className="reveal"><p className="mono-label mb-5 text-[10px] text-[hsl(var(--secondary))]">{eyebrow}</p><h1 className="display max-w-3xl text-5xl leading-[1.02] tracking-[-.045em] sm:text-6xl">{title}</h1><p className="mt-6 max-w-xl text-base leading-7 text-white/70">{text}</p></div>{image && (service ? <ServiceMediaSlideshow service={service} className="page-hero-slideshow relative overflow-hidden" /> : <PageHeroSlideshow image={image} alt="NexHSE professionals learning and applying workplace safety practice" />)}{!hideFieldLabel && <span className="absolute bottom-5 left-5 mono-label text-[9px] text-white/75 lg:bottom-7 lg:left-auto lg:right-8">FIELD / PRACTICE / PEOPLE</span>}</div><div className="pointer-events-none absolute -right-24 -top-40 h-96 w-96 rounded-full border border-[hsl(var(--accent)/.3)]" /></section><div className="hero-linework" aria-hidden="true"><span /><span /><span /><i /><i /></div>{eyebrow === 'Contact NexHSE Africa' && <div className="head-office-map-wrap"><HeadOfficeMap /></div>}</>;
 }
 
 const shopHeroSlides = [
@@ -988,9 +1016,46 @@ function ServiceGallery() {
 function ServiceCard({ service, compact = false }: { service: Service; compact?: boolean }) {
   const Icon = service.icon;
   return <><Link href={`/services/${service.slug}`} className={`group focus-ring relative block overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] transition-all duration-300 hover:-translate-y-1 hover:border-[hsl(var(--accent)/.65)] hover:shadow-[0_18px_45px_rgba(20,70,76,.12)] ${compact ? '' : 'min-h-[350px]'}`} data-testid={`card-service-${service.slug}`}>
-    <div className="service-card-image relative h-44 overflow-hidden"><img src={service.image} alt={`${service.title} service`} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.76)] via-[hsl(var(--primary)/.12)] to-transparent" /><span className="absolute bottom-4 left-5 mono-label text-[10px] text-white">{service.type}</span></div>
+    <ServiceMediaSlideshow service={service} className="service-card-image relative h-44 overflow-hidden" />
     <div className="relative flex min-h-[205px] flex-col p-6"><div className="flex items-start justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--accent))]"><Icon size={19} /></span><span className="mono-label text-[10px] text-[hsl(var(--muted-foreground))]">{service.number}</span></div><div className="pt-6"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">SERVICE</p><h3 className="mt-2 text-xl font-bold tracking-tight text-[hsl(var(--primary))]">{service.title}</h3><p className="mono-label mt-5 text-[9px] text-[hsl(var(--accent))]">WHAT IT IS</p><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{service.short}</p><p className="mono-label mt-5 text-[9px] text-[hsl(var(--accent))]">THE OUTCOME</p><p className="mt-2 text-sm leading-6 text-[hsl(var(--primary))]">{service.outcome}</p><span className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--primary))]">Explore service <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></span></div></div>
   </Link></>;
+}
+
+function ServiceMediaSlideshow({ service, className }: { service: Service; className: string }) {
+  const slides = useMemo(() => getServiceMediaSlides(service), [service.image, service.slug, service.title, service.type]);
+  const [current, setCurrent] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+  const frame = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = frame.current;
+    if (!element || !('IntersectionObserver' in window)) {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      setIsVisible(entries.some(entry => entry.isIntersecting));
+    }, { rootMargin: '120px' });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || slides.length < 2) return;
+    const timer = window.setInterval(() => setCurrent(index => (index + 1) % slides.length), 6500);
+    return () => window.clearInterval(timer);
+  }, [isVisible, slides.length]);
+
+  const activeSlide = slides[current];
+  if (!activeSlide) return null;
+  const isVideo = activeSlide.image.toLowerCase().endsWith('.mp4');
+  return <div ref={frame} className={className} role="region" aria-roledescription="carousel" aria-label={`${service.title} images`} data-testid={`slideshow-service-${service.slug}`}>
+    {isVideo
+      ? <video key={activeSlide.image} src={activeSlide.image} autoPlay muted loop playsInline preload="none" aria-label={activeSlide.alt} className="absolute inset-0 h-full w-full object-cover" />
+      : <img key={activeSlide.image} src={activeSlide.image} alt={activeSlide.alt} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />}
+    <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.82)] via-[hsl(var(--primary)/.22)] to-transparent" />
+    <span className="absolute bottom-4 left-5 right-5 mono-label text-[10px] text-white">{service.title}</span>
+  </div>;
 }
 
 function Home() {
@@ -1065,7 +1130,7 @@ function ServicesMiddleLegacy() {
   ];
   const matches = (service: Service) => `${service.title} ${service.short} ${service.outcome}`.toLowerCase().includes(query.toLowerCase());
   const visibleCategories = categories.filter(category => filter === 'All' || category.key === filter).map(category => ({ ...category, services: serviceRecords.filter(service => service.type === category.key && matches(service)) })).filter(category => category.services.length);
-  return <Shell><Seo page="services" /><main className="services-page relative overflow-hidden"><div className="service-line-art" aria-hidden="true"><span /><span /><span /><span /></div><PageIntro eyebrow="Services portfolio" title="The right safety work starts with the right question." text="Explore the full NexHSE Africa service portfolio, grouped by the work your organisation needs to do." image={harnessImage} /><section className="relative z-10 mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Services', '/services']]} /><div className="mb-14 flex flex-col gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/.88)] p-4 backdrop-blur-sm md:flex-row"><label className="flex flex-1 items-center gap-3 rounded-xl bg-[hsl(var(--secondary)/.6)] px-4"><Search size={17} className="text-[hsl(var(--accent))]" /><span className="sr-only">Search services</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search services" className="focus-ring min-h-11 w-full bg-transparent text-sm outline-none" data-testid="input-search-services" /></label><div className="flex gap-2 overflow-auto">{['All', ...categories.map(category => category.key)].map(option => <button key={option} onClick={() => setFilter(option)} className={`focus-ring min-h-11 whitespace-nowrap rounded-full px-4 text-xs font-bold ${filter === option ? 'bg-[hsl(var(--primary))] text-white' : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-filter-services-${option.toLowerCase().replaceAll(' ', '-')}`}>{option === 'All' ? 'All services' : categories.find(category => category.key === option)?.label}</button>)}</div></div><div className="space-y-20">{visibleCategories.map((category, categoryIndex) => <section key={category.key} className={`service-category service-category--${categoryIndex % 2 ? 'reverse' : 'standard'}`}><div className="service-category-heading"><div className="service-category-visual organic-image organic-image--quiet"><img src={category.image} alt={`${category.label} in practice`} loading="lazy" /></div><div><p className="mono-label text-[10px] font-bold text-[hsl(var(--accent))]">{String(categoryIndex + 1).padStart(2, '0')} / {category.label}</p><h2 className="display mt-3 max-w-xl text-4xl leading-[1.05] tracking-[-.04em] text-[hsl(var(--primary))] sm:text-5xl">{category.title}</h2><p className="mt-4 max-w-lg text-sm leading-7 text-[hsl(var(--muted-foreground))]">{category.text}</p></div></div><div className="service-category-grid">{category.services.map((service, index) => <div key={service.slug} className={`service-tile-stagger service-tile-stagger--${index % 3}`}><ServiceCard service={service} /></div>)}</div></section>)}</div>{!visibleCategories.length && <EmptyState title="No services match that search." text="Try a broader term or reset the filters." action={() => { setQuery(''); setFilter('All'); }} actionLabel="Reset filters" />}<ServiceGallery /></section></main></Shell>;
+  return <Shell><Seo page="services" /><main className="services-page relative overflow-hidden"><div className="service-line-art" aria-hidden="true"><span /><span /><span /><span /></div><PageIntro eyebrow="Services portfolio" title="The right safety work starts with the right question." text="Explore the full NexHSE Africa service portfolio, grouped by the work your organisation needs to do." image={harnessImage} /><section className="relative z-10 mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[[ 'Services', '/services' ]]} /><div className="mb-14 flex flex-col gap-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/.88)] p-4 backdrop-blur-sm md:flex-row"><label className="flex flex-1 items-center gap-3 rounded-xl bg-[hsl(var(--secondary)/.6)] px-4"><Search size={17} className="text-[hsl(var(--accent))]" /><span className="sr-only">Search services</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search services" className="focus-ring min-h-11 w-full bg-transparent text-sm outline-none" data-testid="input-search-services" /></label><div className="flex gap-2 overflow-auto">{['All', ...categories.map(category => category.key)].map(option => <button key={option} onClick={() => setFilter(option)} className={`focus-ring min-h-11 whitespace-nowrap rounded-full px-4 text-xs font-bold ${filter === option ? 'bg-[hsl(var(--primary))] text-white' : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-filter-services-${option.toLowerCase().replaceAll(' ', '-')}`}>{option === 'All' ? 'All services' : categories.find(category => category.key === option)?.label}</button>)}</div></div><div className="space-y-20">{visibleCategories.map((category, categoryIndex) => <section key={category.key} className={`service-category service-category--${categoryIndex % 2 ? 'reverse' : 'standard'}`}><div className="service-category-heading"><ServiceMediaSlideshow service={category.services[0]} className="service-category-visual organic-image organic-image--quiet relative overflow-hidden" /><div><p className="mono-label text-[10px] font-bold text-[hsl(var(--accent))]">{String(categoryIndex + 1).padStart(2, '0')} / {category.label}</p><h2 className="display mt-3 max-w-xl text-4xl leading-[1.05] tracking-[-.04em] text-[hsl(var(--primary))] sm:text-5xl">{category.title}</h2><p className="mt-4 max-w-lg text-sm leading-7 text-[hsl(var(--muted-foreground))]">{category.text}</p></div></div><div className="service-category-grid">{category.services.map((service, index) => <div key={service.slug} className={`service-tile-stagger service-tile-stagger--${index % 3}`}><ServiceCard service={service} /></div>)}</div></section>)}</div>{!visibleCategories.length && <EmptyState title="No services match that search." text="Try a broader term or reset the filters." action={() => { setQuery(''); setFilter('All'); }} actionLabel="Reset filters" />}<ServiceGallery /></section></main></Shell>;
 }
 
 function Services() {
@@ -1093,23 +1158,26 @@ function ServiceDetail() {
   const { slug = '' } = useParams<{ slug: string }>();
   const serviceRecords = useServices();
   const service = serviceRecords.find(item => item.slug === resolveServiceSlug(slug)) ?? serviceRecords[0];
-  return <Shell><Seo page="services" title={`${service.title} | NexHSE Africa`} description={service.short} /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-14 pt-12 lg:px-8 lg:pb-20"><Breadcrumbs items={[[ 'Services', '/services' ], [ service.title, `/services/${service.slug}` ]]} /><p className="mono-label mt-10 text-[10px] text-[hsl(var(--secondary))]">{service.type}</p><h1 className="display mt-4 max-w-4xl text-5xl leading-tight sm:text-7xl">{service.title}</h1></div></section><section className="mx-auto max-w-7xl px-5 py-12 lg:px-8"><div className="grid gap-6 md:grid-cols-2"><article className="border-t border-[hsl(var(--border))] pt-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">WHAT IT IS</p><p className="mt-4 text-lg leading-8 text-[hsl(var(--muted-foreground))]">{service.short}</p></article><article className="border-t border-[hsl(var(--border))] pt-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">THE OUTCOME</p><p className="mt-4 text-lg leading-8 text-[hsl(var(--primary))]">{service.outcome}</p></article></div><Link href="/request-a-quote" className="focus-ring mt-10 inline-flex min-h-12 items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 text-sm font-bold text-white">Request a quote <ArrowUpRight size={16} /></Link><div className="mt-12 border-t border-[hsl(var(--border))] pt-6"><Link href="/services" className="focus-ring text-sm font-bold text-[hsl(var(--primary))]">SERVICE PORTFOLIO</Link></div></section></main></Shell>;
+  return <Shell><Seo page="services" title={`${service.title} | NexHSE Africa`} description={service.short} /><main><section className="bg-[hsl(var(--primary))] text-white"><div className="mx-auto max-w-7xl px-5 pb-14 pt-12 lg:px-8 lg:pb-20"><Breadcrumbs items={[[ 'Services', '/services' ], [ service.title, `/services/${service.slug}` ]]} /><p className="mono-label mt-10 text-[10px] text-[hsl(var(--secondary))]">{service.type}</p><h1 className="display mt-4 max-w-4xl text-5xl leading-tight sm:text-7xl">{service.title}</h1></div></section><section className="mx-auto max-w-7xl px-5 py-12 lg:px-8"><div className="grid gap-8 lg:grid-cols-[1fr_.9fr]"><div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1"><article className="border-t border-[hsl(var(--border))] pt-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">WHAT IT IS</p><p className="mt-4 text-lg leading-8 text-[hsl(var(--muted-foreground))]">{service.short}</p></article><article className="border-t border-[hsl(var(--border))] pt-5"><p className="mono-label text-[10px] text-[hsl(var(--accent))]">THE OUTCOME</p><p className="mt-4 text-lg leading-8 text-[hsl(var(--primary))]">{service.outcome}</p></article><Link href="/request-a-quote" className="focus-ring mt-2 inline-flex min-h-12 w-fit items-center gap-2 rounded-full bg-[hsl(var(--accent))] px-5 text-sm font-bold text-white">Request a quote <ArrowUpRight size={16} /></Link></div><ServiceMediaSlideshow service={service} className="organic-image organic-image--quiet relative h-72 overflow-hidden sm:h-96" /></div><div className="mt-12 border-t border-[hsl(var(--border))] pt-6"><Link href="/services" className="focus-ring text-sm font-bold text-[hsl(var(--primary))]">SERVICE PORTFOLIO</Link></div></section></main></Shell>;
 }
 
 function InfoBlock({ title, text }: { title: string; text: string }) { return <div><p className="mono-label text-[10px] text-[hsl(var(--accent))]">{title}</p><p className="mt-4 max-w-2xl text-lg leading-8 text-[hsl(var(--muted-foreground))]">{text}</p></div>; }
 
 function Training() {
-  const [filter, setFilter] = useState('All'); const courseServices = services.filter(s => s.type === 'OSH — TRAINING & CAPACITY BUILDING'); const shown = filter === 'All' ? courseServices : courseServices.filter(s => filter === 'Statutory' ? ['osh-training', 'first-aid-training', 'fire-safety-training'].includes(s.slug) : filter === 'Technical' ? ['work-at-height-confined-space-training', 'ppe-training'].includes(s.slug) : false);
+  const serviceRecords = useServices();
+  const [filter, setFilter] = useState('All'); const courseServices = serviceRecords.filter(s => s.type === 'OSH — TRAINING & CAPACITY BUILDING'); const shown = filter === 'All' ? courseServices : courseServices.filter(s => filter === 'Statutory' ? ['osh-training', 'first-aid-training', 'fire-safety-training'].includes(s.slug) : filter === 'Technical' ? ['work-at-height-confined-space-training', 'ppe-training'].includes(s.slug) : false);
   return <Shell><Seo page="training" /><main><PageIntro eyebrow="Training & development" title="Competence that travels back to the workplace." text="Explore professional development programmes for the people who make safety possible. Course dates, durations and pricing are published only when confirmed." image={trainingImage} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Training', '/training']]} /><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><aside><p className="mono-label text-[10px] text-[hsl(var(--accent))]">Catalogue controls</p><h2 className="display mt-4 text-4xl text-[hsl(var(--primary))]">Find the right learning route.</h2><div className="mt-8 space-y-2">{['All', 'Statutory', 'Technical', 'Management'].map(f => <button key={f} onClick={() => setFilter(f)} className={`focus-ring flex min-h-12 w-full items-center justify-between rounded-xl px-4 text-left text-sm font-bold ${filter === f ? 'bg-[hsl(var(--primary))] text-white' : 'border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-filter-training-${f.toLowerCase()}`}>{f}<ChevronRight size={16} /></button>)}</div><div className="mt-8 rounded-2xl bg-[hsl(var(--secondary))] p-5"><Clock3 size={19} className="text-[hsl(var(--accent))]" /><p className="mt-4 text-sm font-bold text-[hsl(var(--primary))]">Dates, delivery mode and duration</p><p className="mt-2 text-xs leading-5 text-[hsl(var(--muted-foreground))]">CONTENT REQUIRED. Tell us what your team needs and we can discuss the next step.</p></div></aside><div><div className="mb-6 flex items-center justify-between"><p className="text-sm text-[hsl(var(--muted-foreground))]">Showing <strong className="text-[hsl(var(--primary))]">{shown.length}</strong> programmes</p><span className="mono-label text-[10px] text-[hsl(var(--muted-foreground))]">Phase 01 catalogue</span></div><div className="grid gap-4 sm:grid-cols-2">{shown.map(s => <CourseCard key={s.slug} service={s} />)}</div></div></div></section><QuoteCTA /></main></Shell>;
 }
 
 function CourseCard({ service }: { service: Service }) {
-  return <Link href={`/training/${service.slug}`} className="group focus-ring overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]" data-testid={`card-course-${service.slug}`}><OrganicImage src={service.image} alt={`${service.title} training`} className="relative mx-2 mt-2 h-40" /><div className="relative -mt-40 h-40 overflow-hidden rounded-[2rem]"><div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary)/.7)] to-transparent" /><span className="absolute bottom-4 left-4 rounded-full bg-white/15 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white backdrop-blur">Content catalogue</span></div><div className="p-5"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{service.group} / PROFESSIONAL DEVELOPMENT</p><h3 className="mt-3 text-lg font-bold text-[hsl(var(--primary))]">{service.title}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{service.short}</p><div className="mt-5 flex items-center justify-between border-t border-[hsl(var(--border))] pt-4 text-xs font-bold text-[hsl(var(--primary))]"><span>Details & booking</span><ArrowUpRight size={15} /></div></div></Link>;
+  return <Link href={`/training/${service.slug}`} className="group focus-ring overflow-hidden rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]" data-testid={`card-course-${service.slug}`}><ServiceMediaSlideshow service={service} className="relative mx-2 mt-2 h-40 overflow-hidden rounded-[2rem]" /><div className="p-5"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{service.group} / PROFESSIONAL DEVELOPMENT</p><h3 className="mt-3 text-lg font-bold text-[hsl(var(--primary))]">{service.title}</h3><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{service.short}</p><div className="mt-5 flex items-center justify-between border-t border-[hsl(var(--border))] pt-4 text-xs font-bold text-[hsl(var(--primary))]"><span>Details & booking</span><ArrowUpRight size={15} /></div></div></Link>;
 }
 
 function CourseDetail() {
-  const { course = '' } = useParams<{ course: string }>(); const service = services.find(s => s.slug === course && s.type === 'OSH — TRAINING & CAPACITY BUILDING') ?? services[0];
-  return <Shell><Seo page="training" title={`${service.title} | NexHSE Africa`} /><main><PageIntro eyebrow="Course detail · Content catalogue" title={service.title} text={service.short} image={service.image} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Training', '/training'], [service.title, `/training/${service.slug}`]]} /><div className="grid gap-12 lg:grid-cols-[1.25fr_.75fr]"><div><InfoBlock title="Course overview" text="This course page is prepared for the future NexHSE catalogue. Course-specific overview, audience, objectives and requirements are CONTENT REQUIRED and will be confirmed before publication." /><div className="mt-12 grid gap-4 sm:grid-cols-2">{[['Who should attend', 'CONTENT REQUIRED'], ['Learning objectives', 'CONTENT REQUIRED'], ['Format & duration', 'CONTENT REQUIRED'], ['Certification / completion', 'CONTENT REQUIRED'], ['Available dates', 'Check availability'], ['Price / quote status', 'Request a quote']].map(([label, value]) => <div key={label} className="rounded-2xl border border-[hsl(var(--border))] p-5"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{label}</p><p className="mt-4 text-sm font-bold text-[hsl(var(--primary))]">{value}</p></div>)}</div></div><div className="h-fit rounded-2xl bg-[hsl(var(--primary))] p-7 text-white lg:sticky lg:top-24"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Ready to discuss training?</p><h2 className="display mt-8 text-3xl">Let’s shape the right programme for your team.</h2><p className="mt-4 text-sm leading-6 text-white/65">Share your organisation, audience and preferred timing. We’ll follow up with the next step.</p><Link href="/request-a-quote" className="focus-ring mt-7 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[hsl(var(--accent))] text-sm font-bold" data-testid="link-course-book">Book training <ArrowUpRight size={16} /></Link></div></div></section><section className="bg-[hsl(var(--secondary)/.6)] px-5 py-20 lg:px-8"><div className="mx-auto max-w-7xl"><SectionHeader eyebrow="Course FAQ" title="Questions before you book?" /><FAQList /></div></section></main></Shell>;
+  const { course = '' } = useParams<{ course: string }>();
+  const serviceRecords = useServices();
+  const service = serviceRecords.find(s => s.slug === course && s.type === 'OSH — TRAINING & CAPACITY BUILDING') ?? serviceRecords[0];
+  return <Shell><Seo page="training" title={`${service.title} | NexHSE Africa`} /><main><PageIntro eyebrow="Course detail · Content catalogue" title={service.title} text={service.short} image={service.image} service={service} /><section className="mx-auto max-w-7xl px-5 py-20 lg:px-8"><Breadcrumbs items={[['Training', '/training'], [service.title, `/training/${service.slug}`]]} /><div className="grid gap-12 lg:grid-cols-[1.25fr_.75fr]"><div><InfoBlock title="Course overview" text="This course page is prepared for the future NexHSE catalogue. Course-specific overview, audience, objectives and requirements are CONTENT REQUIRED and will be confirmed before publication." /><div className="mt-12 grid gap-4 sm:grid-cols-2">{[['Who should attend', 'CONTENT REQUIRED'], ['Learning objectives', 'CONTENT REQUIRED'], ['Format & duration', 'CONTENT REQUIRED'], ['Certification / completion', 'CONTENT REQUIRED'], ['Available dates', 'Check availability'], ['Price / quote status', 'Request a quote']].map(([label, value]) => <div key={label} className="rounded-2xl border border-[hsl(var(--border))] p-5"><p className="mono-label text-[9px] text-[hsl(var(--accent))]">{label}</p><p className="mt-4 text-sm font-bold text-[hsl(var(--primary))]">{value}</p></div>)}</div></div><div className="h-fit rounded-2xl bg-[hsl(var(--primary))] p-7 text-white lg:sticky lg:top-24"><p className="mono-label text-[10px] text-[hsl(var(--secondary))]">Ready to discuss training?</p><h2 className="display mt-8 text-3xl">Let’s shape the right programme for your team.</h2><p className="mt-4 text-sm leading-6 text-white/65">Share your organisation, audience and preferred timing. We’ll follow up with the next step.</p><Link href="/request-a-quote" className="focus-ring mt-7 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[hsl(var(--accent))] text-sm font-bold" data-testid="link-course-book">Book training <ArrowUpRight size={16} /></Link></div></div></section><section className="bg-[hsl(var(--secondary)/.6)] px-5 py-20 lg:px-8"><div className="mx-auto max-w-7xl"><SectionHeader eyebrow="Course FAQ" title="Questions before you book?" /><FAQList /></div></section></main></Shell>;
 }
 
 function FAQList() { const [open, setOpen] = useState<number | null>(0); return <div className="max-w-3xl divide-y divide-[hsl(var(--border))] border-y border-[hsl(var(--border))]">{faqs.map((faq, i) => <div key={faq.q}><button onClick={() => setOpen(open === i ? null : i)} className="focus-ring flex min-h-16 w-full items-center justify-between text-left text-sm font-bold text-[hsl(var(--primary))]" aria-expanded={open === i} data-testid={`button-course-faq-${i}`}>{faq.q}<ChevronDown size={16} className={open === i ? 'rotate-180 text-[hsl(var(--accent))]' : ''} /></button>{open === i && <p className="pb-5 pr-8 text-sm leading-6 text-[hsl(var(--muted-foreground))]">{faq.a}</p>}</div>)}</div>; }
@@ -1772,6 +1840,57 @@ function AdminProductCatalogue() {
   return <Shell><Seo page="home" title="Product Catalogue Admin | NexHSE Africa" description="Private product catalogue management view for the NexHSE Africa shop." /><main><PageIntro eyebrow="Private admin / shop" title="The live product catalogue." text="This view reads the same product records used by the public shop, keeping names, prices, images, categories and stock visibility aligned." image="/assets/shop/helmet.jpg" /><section className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[['Admin', '/admin'], ['Products', '/admin/products']]} /><div className="mb-8 flex flex-wrap gap-2">{['All', 'PPE', 'Fire Equipment'].map(option => <button key={option} type="button" onClick={() => setCategory(option)} className={`focus-ring min-h-11 rounded-full border px-4 text-xs font-bold ${category === option ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-admin-product-filter-${option.toLowerCase().replaceAll(' ', '-')}`}>{option}</button>)}</div><div className="overflow-x-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><tr><th className="p-4 font-bold">Product</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Price</th><th className="p-4 font-bold">Stock</th><th className="p-4 font-bold">Public page</th></tr></thead><tbody>{products.map(product => <tr key={product.name} className="border-t border-[hsl(var(--border))]"><td className="flex items-center gap-3 p-4 font-semibold text-[hsl(var(--primary))]"><img src={product.image} alt="" className="h-12 w-12 rounded-lg object-cover" />{product.name}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.category}</td><td className="p-4 font-semibold text-[hsl(var(--primary))]">KSh {product.price.toLocaleString()}</td><td className="p-4 text-[hsl(var(--muted-foreground))]">{product.stock}</td><td className="p-4"><Link href={productDetailHref(product)} className="focus-ring text-xs font-bold text-[hsl(var(--primary))]">View product <ArrowUpRight size={14} className="ml-1 inline" /></Link></td></tr>)}</tbody></table></div></section></main></Shell>;
 }
 
+function AdminImageField({ label, value, scope, onChange, allowVideo = false }: { label: string; value: string; scope: 'products' | 'services'; onChange: (value: string) => void; allowVideo?: boolean }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const video = /\.mp4(?:$|[?#])/i.test(value);
+  const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+    const acceptedType = file.type.startsWith('image/') || (allowVideo && file.type === 'video/mp4');
+    if (!acceptedType) {
+      setError(allowVideo ? 'Choose an image or MP4 video.' : 'Choose a supported image file.');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setError('Files must be 20 MB or smaller.');
+      return;
+    }
+    setUploading(true);
+    setError('');
+    try {
+      const { upload: uploadBlob } = await import('@vercel/blob/client');
+      const safeName = file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]/g, '-').slice(-100);
+      const blob = await uploadBlob(`nexhse/catalog/${scope}/${Date.now()}-${safeName}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/admin-upload',
+        clientPayload: scope,
+        multipart: file.size > 5 * 1024 * 1024,
+      });
+      onChange(blob.url);
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : 'Unable to upload this file.');
+    } finally {
+      setUploading(false);
+    }
+  };
+  return <div className="block text-sm font-semibold text-[hsl(var(--primary))]">
+    <label className="block" htmlFor={`image-path-${scope}-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}<input id={`image-path-${scope}-${label.toLowerCase().replaceAll(' ', '-')}`} value={value} onChange={event => onChange(event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm font-normal" placeholder="/assets/... or https://..." /></label>
+    <div className="mt-3 flex flex-wrap items-center gap-3">
+      <label className={`focus-ring inline-flex min-h-10 cursor-pointer items-center rounded-lg border border-[hsl(var(--border))] px-3 text-xs font-bold ${uploading ? 'pointer-events-none opacity-50' : ''}`}>
+        {uploading ? 'Uploading to Blob…' : 'Upload to Blob'}
+        <input type="file" accept={allowVideo ? 'image/avif,image/gif,image/jpeg,image/png,image/webp,video/mp4' : 'image/avif,image/gif,image/jpeg,image/png,image/webp'} onChange={event => void uploadImage(event)} disabled={uploading} className="sr-only" />
+      </label>
+      {value && (video
+        ? <video src={value} muted playsInline preload="metadata" className="h-14 w-20 rounded-md border border-[hsl(var(--border))] object-cover" />
+        : <img src={value} alt={`${label} preview`} loading="lazy" decoding="async" className="h-14 w-20 rounded-md border border-[hsl(var(--border))] object-cover" />)}
+    </div>
+    <p className="mt-2 text-xs font-normal text-[hsl(var(--muted-foreground))]">Uploaded media is stored in Blob and its URL is shared by the admin, shop and public service pages.</p>
+    {error && <p role="alert" className="mt-2 text-xs font-semibold text-[hsl(var(--destructive))]">{error}</p>}
+  </div>;
+}
+
 function AdminProductCrudPage({
   products,
   updateProduct,
@@ -1962,7 +2081,9 @@ function AdminProductCrudPage({
             </aside>
             <section className="border-t border-[hsl(var(--border))] pt-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                {fields.map(([field, label]) => (
+                {fields.map(([field, label]) => field === "image" ? (
+                  <AdminImageField key={field} label={label} value={form.image} scope="products" onChange={value => update(field, value)} />
+                ) : (
                   <label
                     key={field}
                     className="block text-sm font-semibold text-[hsl(var(--primary))]"
@@ -2364,8 +2485,8 @@ function AdminServicesPage() {
     setIsNew(false);
     setNotice('Service archived from the public catalogue.');
   };
-  const fields: [keyof Service, string][] = [['title', 'Service title'], ['slug', 'URL slug'], ['number', 'Catalogue number'], ['type', 'Service category'], ['group', 'Short label'], ['image', 'Image path']];
-  return <Shell><Seo page="home" title="Service catalogue | NexHSE Africa" description="Manage public service catalogue records." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Services', '/admin/services' ]]} /><SectionHeader eyebrow="Service catalogue / CRUD" title="Keep the public service portfolio current." text="Create, edit, publish or archive service records used by the public catalogue." /><div className="grid gap-8 lg:grid-cols-[.7fr_1.3fr]"><aside><button type="button" onClick={create} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white">Add service</button><div className="mt-5 divide-y divide-[hsl(var(--border))]">{rows.map(service => <button key={service.slug} type="button" onClick={() => { setIsNew(false); setSelectedSlug(service.slug); }} className={`focus-ring block w-full py-3 text-left ${selectedSlug === service.slug && !isNew ? 'font-bold text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}><span className="block text-sm">{service.title}</span><span className="mt-1 block text-xs">{service.type}</span></button>)}</div></aside><section className="border-t border-[hsl(var(--border))] pt-5"><div className="grid gap-4 sm:grid-cols-2">{fields.map(([field, label]) => <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={String(form[field] ?? '')} onChange={event => update(field, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm" /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">Short description<textarea value={form.short} onChange={event => update('short', event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label><label className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">Customer outcome<textarea value={form.outcome} onChange={event => update('outcome', event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label></div><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={() => void save()} disabled={!form.title.trim() || !form.short.trim() || !form.type.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Save service</button>{!isNew && <button type="button" onClick={() => void remove()} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">Archive service</button>}</div>{notice && <p role="status" className="mt-4 text-sm font-semibold text-[hsl(var(--accent))]">{notice}</p>}</section></div></main></Shell>;
+  const fields: [keyof Service, string][] = [['title', 'Service title'], ['slug', 'URL slug'], ['number', 'Catalogue number'], ['type', 'Service category'], ['group', 'Short label'], ['image', 'Image URL or asset path']];
+  return <Shell><Seo page="home" title="Service catalogue | NexHSE Africa" description="Manage public service catalogue records." /><main className="mx-auto max-w-7xl px-5 py-16 lg:px-8"><Breadcrumbs items={[[ 'Admin', '/admin' ], [ 'Services', '/admin/services' ]]} /><SectionHeader eyebrow="Service catalogue / CRUD" title="Keep the public service portfolio current." text="Create, edit, publish or archive service records used by the public catalogue." /><div className="grid gap-8 lg:grid-cols-[.7fr_1.3fr]"><aside><button type="button" onClick={create} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white">Add service</button><div className="mt-5 divide-y divide-[hsl(var(--border))]">{rows.map(service => <button key={service.slug} type="button" onClick={() => { setIsNew(false); setSelectedSlug(service.slug); }} className={`focus-ring block w-full py-3 text-left ${selectedSlug === service.slug && !isNew ? 'font-bold text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}><span className="block text-sm">{service.title}</span><span className="mt-1 block text-xs">{service.type}</span></button>)}</div></aside><section className="border-t border-[hsl(var(--border))] pt-5"><div className="grid gap-4 sm:grid-cols-2">{fields.map(([field, label]) => field === 'image' ? <AdminImageField key={field} label={label} value={form.image} scope="services" allowVideo onChange={value => update(field, value)} /> : <label key={field} className="block text-sm font-semibold text-[hsl(var(--primary))]">{label}<input value={String(form[field] ?? '')} onChange={event => update(field, event.target.value)} className="focus-ring mt-2 min-h-11 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent px-3 text-sm" /></label>)}<label className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">Short description<textarea value={form.short} onChange={event => update('short', event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label><label className="block text-sm font-semibold text-[hsl(var(--primary))] sm:col-span-2">Customer outcome<textarea value={form.outcome} onChange={event => update('outcome', event.target.value)} className="focus-ring mt-2 min-h-20 w-full rounded-lg border border-[hsl(var(--input))] bg-transparent p-3 text-sm" /></label></div><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={() => void save()} disabled={!form.title.trim() || !form.short.trim() || !form.type.trim()} className="focus-ring min-h-11 rounded-lg bg-[hsl(var(--primary))] px-4 text-sm font-bold text-white disabled:opacity-40">Save service</button>{!isNew && <button type="button" onClick={() => void remove()} className="focus-ring min-h-11 rounded-lg border border-[hsl(var(--border))] px-4 text-sm font-bold">Archive service</button>}</div>{notice && <p role="status" className="mt-4 text-sm font-semibold text-[hsl(var(--accent))]">{notice}</p>}</section></div></main></Shell>;
 }
 
 function AdminPromotionsPage() {

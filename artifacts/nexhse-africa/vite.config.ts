@@ -1,4 +1,5 @@
 import path from 'path';
+import { createReadStream, promises as fs } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, loadEnv } from 'vite';
@@ -81,12 +82,62 @@ function localAdminSessionApi() {
   };
 }
 
+function sharedCatalogAssets() {
+  const assetRoot = path.resolve(workspaceRoot, 'public/assets');
+  const contentTypes: Record<string, string> = {
+    '.avif': 'image/avif',
+    '.gif': 'image/gif',
+    '.jpeg': 'image/jpeg',
+    '.jpg': 'image/jpeg',
+    '.mp4': 'video/mp4',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+  };
+  return {
+    name: 'nexhse-shared-catalog-assets',
+    configureServer(server: any) {
+      server.middlewares.use('/assets', (req: any, res: any, next: () => void) => {
+        if (!['GET', 'HEAD'].includes(req.method ?? '')) return next();
+        let relativePath: string;
+        try {
+          relativePath = decodeURIComponent((req.url ?? '/').split('?')[0]).replace(/^\/+/, '');
+        } catch {
+          return next();
+        }
+        const assetPath = path.resolve(assetRoot, relativePath);
+        if (assetPath !== assetRoot && !assetPath.startsWith(`${assetRoot}${path.sep}`)) return next();
+        void fs.stat(assetPath).then(info => {
+          if (!info.isFile()) return next();
+          res.statusCode = 200;
+          res.setHeader('Content-Type', contentTypes[path.extname(assetPath).toLowerCase()] ?? 'application/octet-stream');
+          res.setHeader('Content-Length', info.size);
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          if (req.method === 'HEAD') return res.end();
+          const stream = createReadStream(assetPath);
+          stream.on('error', error => {
+            server.config.logger.error(error);
+            if (!res.headersSent) res.statusCode = 500;
+            res.end();
+          });
+          stream.pipe(res);
+        }).catch((error: NodeJS.ErrnoException) => {
+          if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return next();
+          server.config.logger.error(error);
+          res.statusCode = 500;
+          res.end();
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    sharedCatalogAssets(),
     localAdminSessionApi(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined
