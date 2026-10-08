@@ -1,4 +1,4 @@
-import { getPublicSupabaseConfig } from '../lib/api/supabase';
+import { getPublicSupabaseConfig } from '../lib/api/supabase.js';
 
 export default function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');

@@ -1,6 +1,6 @@
-import { clearAdminSessionCookie, getActiveAdminSession, getAdminEnv, isTrustedOrigin, setAdminSessionCookie, verifyAdminKey, verifyAdminPassword, verifyHashedAdminPassword } from '../lib/api/admin-session';
+import { clearAdminSessionCookie, getActiveAdminSession, getAdminEnv, isTrustedOrigin, setAdminSessionCookie, verifyAdminKey, verifyAdminPassword, verifyHashedAdminPassword } from '../lib/api/admin-session.js';
 import { findAdminUserByEmail } from '@workspace/db';
-import { createSupabaseAuthClient, isSupabaseAuthConfigured, provisionSupabaseAdminUser } from '../lib/api/supabase';
+import { createSupabaseAuthClient, isSupabaseAuthConfigured, provisionSupabaseAdminUser } from '../lib/api/supabase.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');

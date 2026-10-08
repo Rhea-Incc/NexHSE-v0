@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { listShopOrdersForEmailEdge } from '../../lib/db/src/edge';
-import { getNeonConnectionString, getPublicSupabaseConfig } from '../../lib/api/supabase';
+import { listShopOrdersForEmailEdge } from '../../lib/db/src/edge.js';
+import { getNeonConnectionString, getPublicSupabaseConfig } from '../../lib/api/supabase.js';
 
 export const config = { runtime: 'edge' };
 

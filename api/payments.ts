@@ -1,6 +1,6 @@
-import { createMpesaStkPush, createStripeCheckout, processMpesaCallback, processStripeWebhook, readOrderPaymentStatus } from '../lib/api/payments';
-import { getPaymentGatewayStatus } from '../lib/api/payment-config';
-import { isTrustedOrigin } from '../lib/api/admin-session';
+import { createMpesaStkPush, createStripeCheckout, processMpesaCallback, processStripeWebhook, readOrderPaymentStatus } from '../lib/api/payments.js';
+import { getPaymentGatewayStatus } from '../lib/api/payment-config.js';
+import { isTrustedOrigin } from '../lib/api/admin-session.js';
 
 export const config = { api: { bodyParser: false } };
 

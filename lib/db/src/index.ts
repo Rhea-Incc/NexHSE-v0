@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
-import * as schema from './schema';
+import * as schema from './schema/index.js';
 
 const { Pool } = pg;
 
@@ -28,7 +28,7 @@ export function getDatabase() {
   return database;
 }
 
-export * from './schema';
+export * from './schema/index.js';
 
 export async function readSiteStoreValue(key: string) {
   const db = getDatabase();

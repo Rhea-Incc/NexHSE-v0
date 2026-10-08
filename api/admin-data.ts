@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { addOrderEvent, addServiceTicketFollowup, cancelShopOrderAndRestock, deleteShopProduct, deleteShopPromotion, disableService, findClientByEmail, findClientById, findShopOrder, findShopProductBySku, findShopPromotionByCode, listBlogPosts, listClientsForUser, listOrderEvents, listServices, listServiceTicketFollowups, listServiceTickets, listShopOrders, listShopOrdersForEmails, listShopProducts, listShopPromotions, readSiteStoreValue, seedClientsFromOrders, updateClient, updateServiceTicketWorkflow, updateShopOrderWorkflow, upsertBlogPost, upsertClient, upsertService, upsertServices, upsertServiceTicket, upsertShopOrder, upsertShopProduct, upsertShopPromotion, writeSiteStoreValue } from '@workspace/db';
 import * as schema from '@workspace/db/schema';
-import { getActiveAdminSession, isTrustedOrigin } from '../lib/api/admin-session';
+import { getActiveAdminSession, isTrustedOrigin } from '../lib/api/admin-session.js';
 
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const stringArray = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, 100) : [];

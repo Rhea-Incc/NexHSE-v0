@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import Stripe from 'stripe';
 import { completeShopOrderMpesaRequest, findShopOrder, findShopOrderByMpesaRequestId, findShopOrderPaymentStatus, hasShopOrderPaymentToken, releaseShopOrderMpesaRequest, reserveShopOrderMpesaRequest, saveShopOrderPaymentReference, updateShopOrderPaymentStatus } from '@workspace/db';
-import { getPaymentGatewayStatus, normalizeKenyanPhone } from './payment-config';
+import { getPaymentGatewayStatus, normalizeKenyanPhone } from './payment-config.js';
 
 type PaymentError = Error & { statusCode: number };
 

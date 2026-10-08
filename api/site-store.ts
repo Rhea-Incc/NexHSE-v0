@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createShopOrderWithStock, listClientsForUser, listShopOrders, listShopOrdersForEmails, listShopProducts, listShopPromotions, readSiteStoreValue, upsertShopProduct, writeSiteStoreValue } from '@workspace/db';
-import { getActiveAdminSession, isTrustedOrigin } from '../lib/api/admin-session';
+import { getActiveAdminSession, isTrustedOrigin } from '../lib/api/admin-session.js';
 
 const keys = new Set(['nexhse-shop-products', 'nexhse-blog-posts', 'nexhse-shop-orders', 'nexhse-service-tickets']);
 const publicReadKeys = new Set(['nexhse-shop-products', 'nexhse-blog-posts']);

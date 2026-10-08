@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { acceptAdminInvitation, createAdminInvitation, listAdminInvitations, listAdminUsers, updateAdminUser } from '@workspace/db';
-import { getActiveAdminSession, hashAdminPassword, isTrustedOrigin, setAdminSessionCookie } from '../lib/api/admin-session';
+import { getActiveAdminSession, hashAdminPassword, isTrustedOrigin, setAdminSessionCookie } from '../lib/api/admin-session.js';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 

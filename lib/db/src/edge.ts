@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from './schema';
+import * as schema from './schema/index.js';
 
 function getEdgeDatabase(connectionString: string) {
   if (!connectionString) throw new Error('DATABASE_URL or POSTGRES_URL must be set for Neon Edge access');
