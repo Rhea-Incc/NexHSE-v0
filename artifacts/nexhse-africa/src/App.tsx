@@ -24,7 +24,7 @@ const nexhseLogo = '/assets/logo01_1787991144513-BzpG7v81.png';
 
 const queryClient = new QueryClient();
 const phone = '0705 065 852';
-const siteUrl = 'https://nexhse.co.ke';
+const siteUrl = 'https://www.nexhse.co.ke';
 const email = 'info@nexhse.co.ke';
 type SiteStoreKey = 'nexhse-shop-cart' | 'nexhse-shop-products' | 'nexhse-shop-orders' | 'nexhse-service-tickets' | 'nexhse-blog-posts';
 const siteStoreKeys: SiteStoreKey[] = ['nexhse-shop-cart', 'nexhse-shop-products', 'nexhse-shop-orders', 'nexhse-service-tickets', 'nexhse-blog-posts'];
@@ -91,18 +91,18 @@ const faqs: FAQ[] = [
   { q: 'Are your courses available on fixed dates?', a: 'Course dates, durations and availability are content required for Phase 1. Contact us to discuss your intended programme or check back for published dates.' },
 ];
 
-const meta: Record<string, { title: string; description: string }> = {
-  home: { title: 'NexHSE Africa | Workplace Safety, HSE Training & Professional Development', description: 'NexHSE Africa helps organisations across Kenya and Africa protect people, reduce workplace risk and build practical HSE capability through audits, training, fire safety and environmental services.' },
-  about: { title: 'About NexHSE Africa | Workplace Safety & Professional Development', description: 'Learn about NexHSE Africa, our approach to workplace safety, risk reduction, compliance, professional development and building stronger safety cultures.' },
-  services: { title: 'HSE Services Kenya | Audits, Risk Assessment, Fire & Environmental | NexHSE', description: 'Explore NexHSE workplace safety, health, fire, risk assessment, training and environmental services designed around your operations, risks and people.' },
-  training: { title: 'HSE Training Kenya | Fire Safety, First Aid, OSH & Work at Heights | NexHSE', description: 'Explore NexHSE workplace safety and professional development training, including fire safety, first aid, OSH committee and work-at-height programmes.' },
-  projects: { title: 'NexHSE Projects & Case Studies | Workplace Safety in Practice', description: 'Explore NexHSE safety, training, fire and environmental projects and see how practical HSE solutions are applied across real operating environments.' },
-  accreditations: { title: 'NexHSE Accreditations, Compliance & Professional Credentials', description: "Explore NexHSE's verified regulatory registrations, professional affiliations, certifications and workplace safety credentials." },
-  testimonials: { title: 'NexHSE Client Testimonials | Workplace Safety & Training', description: 'Read verified feedback from organisations working with NexHSE across workplace safety, training, auditing and professional development.' },
-  knowledge: { title: 'HSE Knowledge Hub | Workplace Safety & Compliance Kenya | NexHSE', description: 'Practical HSE insights, workplace safety guidance, fire safety information, risk management, environmental compliance and professional development from NexHSE.' },
-  faqs: { title: 'HSE FAQs Kenya | Workplace Safety, Fire & Environmental Questions | NexHSE', description: 'Answers to common workplace health and safety, fire safety, training, auditing and environmental management questions from NexHSE Africa.' },
-  blog: { title: 'NexHSE Africa Blog | Workplace Safety, HSE & Environmental Insights', description: 'Practical workplace safety, HSE compliance, fire safety, training and environmental management insights for organisations in Kenya and Africa.' },
-  contact: { title: 'Contact NexHSE Africa | Workplace Safety & HSE Support Kenya', description: 'Contact NexHSE Africa for workplace safety audits, risk assessment, fire safety, training, environmental services, consultations and quotations.' },
+const meta: Record<string, { title: string; description: string; keywords: string }> = {
+  home: { title: 'NexHSE Africa | Workplace Safety, HSE Training & Professional Development', description: 'NexHSE Africa helps organisations across Kenya and Africa protect people, reduce workplace risk and build practical HSE capability through audits, training, fire safety and environmental services.', keywords: 'workplace safety Kenya, HSE training Kenya, fire safety training, environmental compliance, occupational safety, risk assessments, health and safety consulting' },
+  about: { title: 'About NexHSE Africa | Workplace Safety & Professional Development', description: 'Learn about NexHSE Africa, our approach to workplace safety, risk reduction, compliance, professional development and building stronger safety cultures.', keywords: 'about NexHSE Africa, HSE consultants Kenya, workplace safety experts, occupational safety solutions' },
+  services: { title: 'HSE Services Kenya | Audits, Risk Assessment, Fire & Environmental | NexHSE', description: 'Explore NexHSE workplace safety, health, fire, risk assessment, training and environmental services designed around your operations, risks and people.', keywords: 'HSE services Kenya, workplace safety audits, risk assessments Kenya, fire safety inspections, environmental compliance services' },
+  training: { title: 'HSE Training Kenya | Fire Safety, First Aid, OSH & Work at Heights | NexHSE', description: 'Explore NexHSE workplace safety and professional development training, including fire safety, first aid, OSH committee and work-at-height programmes.', keywords: 'HSE training Kenya, fire safety training, first aid training, work at height training, OSH training Africa' },
+  projects: { title: 'NexHSE Projects & Case Studies | Workplace Safety in Practice', description: 'Explore NexHSE safety, training, fire and environmental projects and see how practical HSE solutions are applied across real operating environments.', keywords: 'HSE projects Kenya, safety case studies, fire safety implementation, workplace safety project examples' },
+  accreditations: { title: 'NexHSE Accreditations, Compliance & Professional Credentials', description: "Explore NexHSE's verified regulatory registrations, professional affiliations, certifications and workplace safety credentials.", keywords: 'NexHSE accreditations, HSE compliance credentials, workplace safety professional credentials, certified safety training providers' },
+  testimonials: { title: 'NexHSE Client Testimonials | Workplace Safety & Training', description: 'Read verified feedback from organisations working with NexHSE across workplace safety, training, auditing and professional development.', keywords: 'NexHSE testimonials, HSE client reviews, workplace safety feedback, safety training results' },
+  knowledge: { title: 'HSE Knowledge Hub | Workplace Safety & Compliance Kenya | NexHSE', description: 'Practical HSE insights, workplace safety guidance, fire safety information, risk management, environmental compliance and professional development from NexHSE.', keywords: 'HSE knowledge Kenya, workplace safety blog, fire safety advice, environmental management resources, compliance guidance' },
+  faqs: { title: 'HSE FAQs Kenya | Workplace Safety, Fire & Environmental Questions | NexHSE', description: 'Answers to common workplace health and safety, fire safety, training, auditing and environmental management questions from NexHSE Africa.', keywords: 'HSE FAQs Kenya, workplace safety questions, fire safety FAQs, environmental compliance questions, training FAQ' },
+  blog: { title: 'NexHSE Africa Blog | Workplace Safety, HSE & Environmental Insights', description: 'Practical workplace safety, HSE compliance, fire safety, training and environmental management insights for organisations in Kenya and Africa.', keywords: 'workplace safety blog, HSE insights, fire safety tips, environmental management insights, occupational health and safety articles' },
+  contact: { title: 'Contact NexHSE Africa | Workplace Safety & HSE Support Kenya', description: 'Contact NexHSE Africa for workplace safety audits, risk assessment, fire safety, training, environmental services, consultations and quotations.', keywords: 'contact NexHSE Africa, HSE consultants Kenya, workplace safety support, request a quote, fire safety consultation' },
 };
 
 function Seo({ page = 'home', title, description, product }: { page?: string; title?: string; description?: string; product?: ShopProduct }) {
@@ -110,6 +110,7 @@ function Seo({ page = 'home', title, description, product }: { page?: string; ti
     const details = meta[page] ?? meta.home;
     const finalTitle = title ?? details.title;
     const finalDescription = description ?? details.description;
+    const finalKeywords = details.keywords || 'NexHSE Africa, HSE training, workplace safety, fire safety, environmental compliance';
     const canonicalOrigin = window.location.hostname.toLowerCase() === 'shop.nexhse.co.ke' ? 'https://shop.nexhse.co.ke' : siteUrl;
     const canonicalUrl = `${canonicalOrigin}${window.location.pathname}`;
     document.title = finalTitle;
@@ -124,24 +125,103 @@ function Seo({ page = 'home', title, description, product }: { page?: string; ti
       el.content = content;
     };
     const isPrivateOrTransactional = window.location.hostname.toLowerCase() === 'admin.nexhse.co.ke' || window.location.pathname.startsWith('/admin') || window.location.pathname === '/shop/checkout' || window.location.pathname === '/checkout';
-    const robotsPolicy = isPrivateOrTransactional ? 'noindex, nofollow' : 'index, follow';
-    set('description', finalDescription); set('robots', robotsPolicy); set('googlebot', robotsPolicy); set('bingbot', robotsPolicy); set('twitter:card', 'summary_large_image'); set('twitter:title', finalTitle); set('twitter:description', finalDescription); set('twitter:image', `${siteUrl}/logo.png`);
+    const robotsPolicy = isPrivateOrTransactional ? 'noindex, nofollow, noarchive, nosnippet' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+    set('description', finalDescription); set('keywords', finalKeywords); set('author', 'NexHSE Africa'); set('application-name', 'NexHSE Africa'); set('language', 'en-KE'); set('robots', robotsPolicy); set('googlebot', robotsPolicy); set('bingbot', robotsPolicy); set('twitter:card', 'summary_large_image'); set('twitter:title', finalTitle); set('twitter:description', finalDescription); set('twitter:image', `${siteUrl}/logo.png`);
     setProperty('og:title', finalTitle); setProperty('og:description', finalDescription); setProperty('og:type', (page === 'knowledge' || page === 'blog') && title ? 'article' : 'website'); setProperty('og:url', canonicalUrl); setProperty('og:site_name', 'NexHSE Africa'); setProperty('og:locale', 'en_KE'); setProperty('og:image', `${siteUrl}/logo.png`);
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
     canonical.href = canonicalUrl;
+    const alternateEnKe = document.querySelector('link[rel="alternate"][hreflang="en-KE"]') as HTMLLinkElement | null;
+    if (!alternateEnKe) {
+      const alt = document.createElement('link');
+      alt.rel = 'alternate';
+      alt.hreflang = 'en-KE';
+      alt.href = canonicalUrl;
+      document.head.appendChild(alt);
+    }
+    const xDefault = document.querySelector('link[rel="alternate"][hreflang="x-default"]') as HTMLLinkElement | null;
+    if (!xDefault) {
+      const alt = document.createElement('link');
+      alt.rel = 'alternate';
+      alt.hreflang = 'x-default';
+      alt.href = siteUrl;
+      document.head.appendChild(alt);
+    }
     let structuredData = document.querySelector('#nexhse-structured-data') as HTMLScriptElement | null;
     if (!structuredData) { structuredData = document.createElement('script'); structuredData.id = 'nexhse-structured-data'; structuredData.type = 'application/ld+json'; document.head.appendChild(structuredData); }
+
+    const organizationSchema = {
+      '@type': 'Organization',
+      '@id': `${siteUrl}/#organization`,
+      name: 'NexHSE Africa',
+      url: `${siteUrl}/`,
+      logo: `${siteUrl}/logo.png`,
+      email,
+      telephone: '+254705065852',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: 'Rock Centre, Outer Ring Road',
+        addressCountry: 'KE',
+      },
+      areaServed: ['Kenya', 'Africa'],
+      knowsAbout: ['Workplace health and safety', 'Risk assessment', 'Fire safety', 'Environmental compliance', 'HSE training'],
+    };
+
+    const websiteSchema = {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      name: 'NexHSE Africa',
+      url: `${siteUrl}/`,
+      publisher: { '@id': `${siteUrl}/#organization` },
+      inLanguage: 'en-KE',
+    };
+
+    const pageSchema = {
+      '@type': 'WebPage',
+      '@id': `${canonicalUrl}#webpage`,
+      url: canonicalUrl,
+      name: finalTitle,
+      description: finalDescription,
+      isPartOf: { '@id': `${siteUrl}/#website` },
+      about: { '@id': `${siteUrl}/#organization` },
+      inLanguage: 'en-KE',
+    };
+
+    const breadcrumbSchema = page !== 'home' ? [{
+      '@type': 'BreadcrumbList',
+      '@id': `${canonicalUrl}#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+        { '@type': 'ListItem', position: 2, name: finalTitle, item: canonicalUrl },
+      ],
+    }] : [];
+
+    const productSchema = product ? [{
+      '@type': 'Product',
+      '@id': `${canonicalUrl}#product`,
+      name: product.name,
+      description: product.seoDescription,
+      image: [`${siteUrl}${product.image}`],
+      sku: productSlug(product),
+      brand: { '@type': 'Brand', name: product.brand },
+      category: product.category,
+      keywords: product.keywords.join(', '),
+      offers: {
+        '@type': 'Offer',
+        url: canonicalUrl,
+        priceCurrency: 'KES',
+        price: product.price,
+        availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        itemCondition: 'https://schema.org/NewCondition',
+      },
+    }] : [];
+
+    const faqSchema = page === 'faqs' ? [{ '@type': 'FAQPage', mainEntity: faqs.map(faq => ({ '@type': 'Question', name: faq.q, acceptedAnswer: { '@type': 'Answer', text: faq.a } })) }] : [];
+    const articleSchema = ((page === 'knowledge' || page === 'blog') && title) ? [{ '@type': 'Article', headline: finalTitle, description: finalDescription, url: canonicalUrl, author: { '@type': 'Organization', name: 'NexHSE Africa', url: `${siteUrl}/` }, publisher: { '@id': `${siteUrl}/#organization` }, mainEntityOfPage: { '@type': 'WebPage', '@id': `${canonicalUrl}#webpage` } }] : [];
+
     structuredData.textContent = JSON.stringify({
       '@context': 'https://schema.org',
-      '@graph': [
-        { '@type': 'Organization', '@id': `${siteUrl}/#organization`, name: 'NexHSE Africa', url: `${siteUrl}/`, logo: `${siteUrl}/logo.png`, email, telephone: '+254705065852', address: { '@type': 'PostalAddress', streetAddress: 'Rock Centre, Outer Ring Road', addressCountry: 'KE' }, areaServed: 'Africa', knowsAbout: ['Workplace health and safety', 'Risk assessment', 'Fire safety', 'Environmental compliance', 'HSE training'] },
-        { '@type': 'WebSite', '@id': `${siteUrl}/#website`, name: 'NexHSE Africa', url: `${siteUrl}/`, publisher: { '@id': `${siteUrl}/#organization` }, inLanguage: 'en-KE' },
-        { '@type': 'WebPage', '@id': `${canonicalUrl}#webpage`, url: canonicalUrl, name: finalTitle, description: finalDescription, isPartOf: { '@id': `${siteUrl}/#website` }, about: { '@id': `${siteUrl}/#organization` }, inLanguage: 'en-KE' },
-        ...(product ? [{ '@type': 'Product', '@id': `${canonicalUrl}#product`, name: product.name, description: product.seoDescription, image: [`${siteUrl}${product.image}`], sku: productSlug(product), brand: { '@type': 'Brand', name: product.brand }, category: product.category, offers: { '@type': 'Offer', url: canonicalUrl, priceCurrency: 'KES', price: product.price, availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition: 'https://schema.org/NewCondition' } }] : []),
-        ...(page === 'faqs' ? [{ '@type': 'FAQPage', mainEntity: faqs.map(faq => ({ '@type': 'Question', name: faq.q, acceptedAnswer: { '@type': 'Answer', text: faq.a } })) }] : []),
-        ...((page === 'knowledge' || page === 'blog') && title ? [{ '@type': 'Article', headline: finalTitle, description: finalDescription, url: canonicalUrl, author: { '@type': 'Organization', name: 'NexHSE Africa', url: `${siteUrl}/` }, publisher: { '@id': `${siteUrl}/#organization` }, mainEntityOfPage: { '@type': 'WebPage', '@id': `${canonicalUrl}#webpage` } }] : []),
-      ],
+      '@graph': [organizationSchema, websiteSchema, pageSchema, ...breadcrumbSchema, ...productSchema, ...faqSchema, ...articleSchema],
     });
   }, [page, title, description]);
   return null;
@@ -1848,7 +1928,10 @@ function AdminAccessGate({ children, ownerOnly = false }: { children: ReactNode;
     setError('');
     try {
       const response = await fetch('/api/admin-session', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(emailAddress.trim() ? { email: emailAddress, password: credential } : { key: credential }) });
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
+      if (!result || typeof result !== 'object') {
+        throw new Error(`Admin sign-in service returned an unexpected response (HTTP ${response.status}). Check Vercel function logs and environment configuration.`);
+      }
       if (!response.ok) throw new Error(result.error ?? 'Unable to sign in');
       if (result.supabaseSession?.access_token && result.supabaseSession?.refresh_token) {
         try {

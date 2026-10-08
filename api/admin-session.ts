@@ -15,6 +15,7 @@ export default async function handler(req: any, res: any) {
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!isTrustedOrigin(req)) return res.status(403).json({ error: 'Untrusted origin' });
+  try {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = req.body?.password ?? req.body?.credential ?? req.body?.key;
 
@@ -73,4 +74,8 @@ export default async function handler(req: any, res: any) {
   const owner = { userId: 'owner', email: process.env.ADMIN_EMAIL ?? 'owner', role: 'owner' };
   setAdminSessionCookie(res, owner);
   return res.status(200).json({ authenticated: true, user: { id: owner.userId, email: owner.email, role: owner.role } });
+  } catch (error) {
+    console.error('admin sign-in failed', error);
+    return res.status(503).json({ error: 'Admin sign-in is temporarily unavailable. Check server database and authentication configuration.' });
+  }
 }
